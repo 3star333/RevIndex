@@ -52,12 +52,10 @@ app.get("/api", (req, res) => res.json({ message: "RevIndex API is running 🚗"
 // ── Serve React build in production ──────────────────────────────────────────
 const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
-// SPA fallback — send index.html for all non-API routes
-app.get("*", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
-
-// ── Global error handler ──────────────────────────────────────────────────────
+  // SPA fallback — send index.html for all non-API routes
+  app.get("*path", (req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });// ── Global error handler ──────────────────────────────────────────────────────
 // Catches any unhandled errors thrown inside route handlers
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   console.error(err.stack);
