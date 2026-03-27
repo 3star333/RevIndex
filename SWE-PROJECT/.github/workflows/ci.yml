@@ -33,7 +33,7 @@ jobs:
           cp .env.production.template .env
           node server.js &
           sleep 3
-          curl -f http://localhost:5000/api || exit 1
+          curl -f http://localhost:5000/health
           kill %1
 
   # ── Frontend ───────────────────────────────────────────────────────────────
