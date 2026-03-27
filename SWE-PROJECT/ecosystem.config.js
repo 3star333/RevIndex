@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "revindex",
       script: "server/server.js",
-      cwd: "/home/ubuntu/revindex",
+      cwd: __dirname,
       instances: 1,
       autorestart: true,
       watch: false,
