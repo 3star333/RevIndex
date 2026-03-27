@@ -27,7 +27,7 @@ function extractField(results, variable) {
 }
 
 // ── ensure vin_cache table ─────────────────────────────────────────────────────
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS vin_cache (
     vin        TEXT PRIMARY KEY,
     year       INTEGER,
@@ -54,9 +54,9 @@ router.get("/decode", async (req, res) => {
     return res.status(400).json({ error: "VIN contains invalid characters." });
   }
 
-  // 1. Cache check
-  db.get("SELECT * FROM vin_cache WHERE vin = ?", [vin], async (err, row) => {
-    if (err) return res.status(500).json({ error: "Database error." });
+  try {
+    // 1. Cache check
+    const row = db.prepare("SELECT * FROM vin_cache WHERE vin = ?").get(vin);
 
     if (row) {
       return res.json({
@@ -74,48 +74,45 @@ router.get("/decode", async (req, res) => {
     }
 
     // 2. Fetch from NHTSA
-    try {
-      const url  = `${NHTSA_BASE}/DecodeVin/${vin}?format=json`;
-      const data = await httpsGet(url);
-      const results = data.Results || [];
+    const url  = `${NHTSA_BASE}/DecodeVin/${vin}?format=json`;
+    const data = await httpsGet(url);
+    const results = data.Results || [];
 
-      const errorCode = extractField(results, "Error Code");
-      if (errorCode && errorCode !== "0") {
-        const errorText = extractField(results, "Error Text") || "Unknown VIN error";
-        return res.status(422).json({ error: `NHTSA: ${errorText}` });
-      }
-
-      const decoded = {
-        vin,
-        year:       parseInt(extractField(results, "Model Year"), 10) || null,
-        make:       extractField(results, "Make"),
-        model:      extractField(results, "Model"),
-        trim:       extractField(results, "Trim"),
-        engine:     buildEngineString(results),
-        body_style: extractField(results, "Body Class"),
-        drive_type: extractField(results, "Drive Type"),
-        fuel_type:  extractField(results, "Fuel Type - Primary"),
-      };
-
-      // 3. Store in cache
-      db.run(
-        `INSERT OR REPLACE INTO vin_cache
-           (vin, year, make, model, trim, engine, body_style, drive_type, fuel_type, raw)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          decoded.vin, decoded.year, decoded.make, decoded.model,
-          decoded.trim, decoded.engine, decoded.body_style,
-          decoded.drive_type, decoded.fuel_type,
-          JSON.stringify(results),
-        ]
-      );
-
-      return res.json({ ...decoded, cached: false });
-    } catch (fetchErr) {
-      console.error("NHTSA fetch error:", fetchErr.message);
-      return res.status(502).json({ error: "Failed to reach NHTSA API. Try again later." });
+    const errorCode = extractField(results, "Error Code");
+    if (errorCode && errorCode !== "0") {
+      const errorText = extractField(results, "Error Text") || "Unknown VIN error";
+      return res.status(422).json({ error: `NHTSA: ${errorText}` });
     }
-  });
+
+    const decoded = {
+      vin,
+      year:       parseInt(extractField(results, "Model Year"), 10) || null,
+      make:       extractField(results, "Make"),
+      model:      extractField(results, "Model"),
+      trim:       extractField(results, "Trim"),
+      engine:     buildEngineString(results),
+      body_style: extractField(results, "Body Class"),
+      drive_type: extractField(results, "Drive Type"),
+      fuel_type:  extractField(results, "Fuel Type - Primary"),
+    };
+
+    // 3. Store in cache
+    db.prepare(
+      `INSERT OR REPLACE INTO vin_cache
+         (vin, year, make, model, trim, engine, body_style, drive_type, fuel_type, raw)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      decoded.vin, decoded.year, decoded.make, decoded.model,
+      decoded.trim, decoded.engine, decoded.body_style,
+      decoded.drive_type, decoded.fuel_type,
+      JSON.stringify(results)
+    );
+
+    return res.json({ ...decoded, cached: false });
+  } catch (fetchErr) {
+    console.error("VIN decode error:", fetchErr.message);
+    return res.status(502).json({ error: "Failed to reach NHTSA API. Try again later." });
+  }
 });
 
 // ── GET /vin/makes ─────────────────────────────────────────────────────────────

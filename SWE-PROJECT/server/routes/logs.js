@@ -23,7 +23,7 @@ router.post("/", async (req, res) => {
       "INSERT INTO logs (vehicle_id, type, cost, mileage, notes, date) VALUES (?, ?, ?, ?, ?, ?)",
       [vehicle_id, type, cost, mileage, notes || null, date]
     );
-    res.status(201).json({ id: result.lastID, vehicle_id, type, cost, mileage, notes: notes || null, date });
+    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, type, cost, mileage, notes: notes || null, date });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -31,17 +31,13 @@ router.post("/", async (req, res) => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      err ? reject(err) : resolve(this);
-    });
-  });
+  try { return Promise.resolve(db.prepare(sql).run(params)); }
+  catch (e) { return Promise.reject(e); }
 }
 
 function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-  });
+  try { return Promise.resolve(db.prepare(sql).all(params)); }
+  catch (e) { return Promise.reject(e); }
 }
 
 // ── DELETE /logs/:id ──────────────────────────────────────────────────────────

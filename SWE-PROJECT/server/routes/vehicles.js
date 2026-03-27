@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
       "INSERT INTO vehicles (make, model, year, nickname, vin) VALUES (?, ?, ?, ?, ?)",
       [make, model, year, nickname || null, vin || null]
     );
-    res.status(201).json({ id: result.lastID, make, model, year, nickname: nickname || null, vin: vin || null });
+    res.status(201).json({ id: result.lastInsertRowid, make, model, year, nickname: nickname || null, vin: vin || null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -184,25 +184,18 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ── Helpers: promisify sqlite3 callbacks ──────────────────────────────────────
+// ── Helpers: better-sqlite3 sync wrapped as async for route compat ────────────
 function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-  });
+  try { return Promise.resolve(db.prepare(sql).all(params)); }
+  catch (e) { return Promise.reject(e); }
 }
-
 function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-  });
+  try { return Promise.resolve(db.prepare(sql).get(params)); }
+  catch (e) { return Promise.reject(e); }
 }
-
 function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      err ? reject(err) : resolve(this);
-    });
-  });
+  try { return Promise.resolve(db.prepare(sql).run(params)); }
+  catch (e) { return Promise.reject(e); }
 }
 
 module.exports = router;

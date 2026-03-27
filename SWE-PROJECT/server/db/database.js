@@ -1,136 +1,120 @@
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
 const path = require("path");
 
 const DB_PATH = path.join(__dirname, "carlog.db");
 
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error("Failed to connect to SQLite database:", err.message);
-  } else {
-    console.log("Connected to SQLite database at", DB_PATH);
-  }
-});
+const db = new Database(DB_PATH);
+console.log("Connected to SQLite database at", DB_PATH);
 
 // Enable foreign key support
-db.run("PRAGMA foreign_keys = ON");
+db.pragma("foreign_keys = ON");
 
 // Create tables if they don't exist
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS vehicles (
-      id        INTEGER PRIMARY KEY AUTOINCREMENT,
-      make      TEXT    NOT NULL,
-      model     TEXT    NOT NULL,
-      year      INTEGER NOT NULL,
-      nickname  TEXT,
-      image     TEXT
-    )
-  `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vehicles (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    make      TEXT    NOT NULL,
+    model     TEXT    NOT NULL,
+    year      INTEGER NOT NULL,
+    nickname  TEXT,
+    image     TEXT
+  );
 
-  // Add image column to existing databases that don't have it
-  db.run(`ALTER TABLE vehicles ADD COLUMN image TEXT`, (err) => {
-    if (err && !err.message.includes("duplicate column")) {
-      console.error("Migration error:", err.message);
-    }
-  });
+  CREATE TABLE IF NOT EXISTS logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    type        TEXT    NOT NULL,
+    cost        REAL    NOT NULL,
+    mileage     INTEGER NOT NULL,
+    notes       TEXT,
+    date        TEXT    NOT NULL,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
 
-  // Add vin column to existing databases that don't have it
-  db.run(`ALTER TABLE vehicles ADD COLUMN vin TEXT`, (err) => {
-    if (err && !err.message.includes("duplicate column")) {
-      console.error("Migration error (vin):", err.message);
-    }
-  });
+  CREATE TABLE IF NOT EXISTS listings (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    make           TEXT    NOT NULL,
+    model          TEXT    NOT NULL,
+    year           INTEGER NOT NULL,
+    price          REAL    NOT NULL,
+    mileage        INTEGER NOT NULL,
+    condition      TEXT    NOT NULL DEFAULT 'good',
+    mod_adjustment REAL    NOT NULL DEFAULT 0
+  );
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS logs (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      vehicle_id  INTEGER NOT NULL,
-      type        TEXT    NOT NULL,
-      cost        REAL    NOT NULL,
-      mileage     INTEGER NOT NULL,
-      notes       TEXT,
-      date        TEXT    NOT NULL,
-      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS vehicle_photos (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    path        TEXT    NOT NULL,
+    caption     TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS listings (
-      id             INTEGER PRIMARY KEY AUTOINCREMENT,
-      make           TEXT    NOT NULL,
-      model          TEXT    NOT NULL,
-      year           INTEGER NOT NULL,
-      price          REAL    NOT NULL,
-      mileage        INTEGER NOT NULL,
-      condition      TEXT    NOT NULL DEFAULT 'good',
-      mod_adjustment REAL    NOT NULL DEFAULT 0
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS mods (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id   INTEGER NOT NULL,
+    name         TEXT    NOT NULL,
+    category     TEXT    NOT NULL DEFAULT 'Other',
+    cost         REAL    NOT NULL DEFAULT 0,
+    install_date TEXT,
+    notes        TEXT,
+    image        TEXT,
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
 
-  // ── Vehicle photos (multiple per vehicle) ─────────────────────────────────
-  db.run(`
-    CREATE TABLE IF NOT EXISTS vehicle_photos (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      vehicle_id  INTEGER NOT NULL,
-      path        TEXT    NOT NULL,
-      caption     TEXT,
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS log_photos (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    log_id     INTEGER NOT NULL,
+    path       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (log_id) REFERENCES logs(id)
+  );
 
-  // ── Mods ──────────────────────────────────────────────────────────────────
-  db.run(`
-    CREATE TABLE IF NOT EXISTS mods (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      vehicle_id   INTEGER NOT NULL,
-      name         TEXT    NOT NULL,
-      category     TEXT    NOT NULL DEFAULT 'Other',
-      cost         REAL    NOT NULL DEFAULT 0,
-      install_date TEXT,
-      notes        TEXT,
-      image        TEXT,
-      created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS threads (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    title       TEXT    NOT NULL,
+    description TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
 
-  // ── Log photos (multiple per log entry) ───────────────────────────────────
-  db.run(`
-    CREATE TABLE IF NOT EXISTS log_photos (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      log_id     INTEGER NOT NULL,
-      path       TEXT    NOT NULL,
-      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (log_id) REFERENCES logs(id)
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS comments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id  INTEGER NOT NULL,
+    author     TEXT    NOT NULL DEFAULT 'Anonymous',
+    content    TEXT    NOT NULL,
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (thread_id) REFERENCES threads(id)
+  );
+`);
 
-  // ── Forum threads (build threads per vehicle) ─────────────────────────────
-  db.run(`
-    CREATE TABLE IF NOT EXISTS threads (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      vehicle_id  INTEGER NOT NULL,
-      title       TEXT    NOT NULL,
-      description TEXT,
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-    )
-  `);
+// Migrations — safe to run on existing DBs
+for (const sql of [
+  "ALTER TABLE vehicles ADD COLUMN image TEXT",
+  "ALTER TABLE vehicles ADD COLUMN vin TEXT",
+]) {
+  try { db.exec(sql); } catch (e) {
+    if (!e.message.includes("duplicate column")) console.error("Migration error:", e.message);
+  }
+}
 
-  // ── Forum comments ────────────────────────────────────────────────────────
-  db.run(`
-    CREATE TABLE IF NOT EXISTS comments (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      thread_id  INTEGER NOT NULL,
-      author     TEXT    NOT NULL DEFAULT 'Anonymous',
-      content    TEXT    NOT NULL,
-      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (thread_id) REFERENCES threads(id)
-    )
-  `);
+console.log("Database tables verified/created.");
 
-  console.log("Database tables verified/created.");
-});
+// ── Async-compatible helpers (better-sqlite3 is sync, wrap for route compat) ──
+db.allAsync = (sql, params = []) => {
+  try { return Promise.resolve(db.prepare(sql).all(params)); }
+  catch (e) { return Promise.reject(e); }
+};
+db.getAsync = (sql, params = []) => {
+  try { return Promise.resolve(db.prepare(sql).get(params)); }
+  catch (e) { return Promise.reject(e); }
+};
+db.runAsync = (sql, params = []) => {
+  try { return Promise.resolve(db.prepare(sql).run(params)); }
+  catch (e) { return Promise.reject(e); }
+};
 
 module.exports = db;

@@ -37,7 +37,7 @@ router.post("/", async (req, res) => {
       "INSERT INTO threads (vehicle_id, title, description) VALUES (?, ?, ?)",
       [vehicle_id, title, description || null]
     );
-    res.status(201).json({ id: result.lastID, vehicle_id, title, description: description || null });
+    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, title, description: description || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -86,13 +86,22 @@ router.post("/:id/comments", async (req, res) => {
       "INSERT INTO comments (thread_id, author, content) VALUES (?, ?, ?)",
       [thread_id, author || "Anonymous", content]
     );
-    res.status(201).json({ id: result.lastID, thread_id, author: author || "Anonymous", content });
+    res.status(201).json({ id: result.lastInsertRowid, thread_id, author: author || "Anonymous", content });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function dbAll(sql, p = []) { return new Promise((res, rej) => db.all(sql, p, (e, r) => e ? rej(e) : res(r))); }
-function dbGet(sql, p = []) { return new Promise((res, rej) => db.get(sql, p, (e, r) => e ? rej(e) : res(r))); }
-function dbRun(sql, p = []) { return new Promise((res, rej) => db.run(sql, p, function(e) { e ? rej(e) : res(this); })); }
+function dbAll(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).all(p)); }
+  catch (e) { return Promise.reject(e); }
+}
+function dbGet(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).get(p)); }
+  catch (e) { return Promise.reject(e); }
+}
+function dbRun(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).run(p)); }
+  catch (e) { return Promise.reject(e); }
+}
 
 module.exports = router;

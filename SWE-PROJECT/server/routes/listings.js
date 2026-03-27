@@ -38,7 +38,7 @@ router.post("/", async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [make, model, year, price, mileage, condition.toLowerCase(), mod_adjustment]
     );
-    res.status(201).json({ id: result.lastID, make, model, year, price, mileage, condition: condition.toLowerCase(), mod_adjustment });
+    res.status(201).json({ id: result.lastInsertRowid, make, model, year, price, mileage, condition: condition.toLowerCase(), mod_adjustment });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -46,17 +46,13 @@ router.post("/", async (req, res) => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-  });
+  try { return Promise.resolve(db.prepare(sql).all(params)); }
+  catch (e) { return Promise.reject(e); }
 }
 
 function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      err ? reject(err) : resolve(this);
-    });
-  });
+  try { return Promise.resolve(db.prepare(sql).run(params)); }
+  catch (e) { return Promise.reject(e); }
 }
 
 module.exports = router;

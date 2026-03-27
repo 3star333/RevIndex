@@ -50,7 +50,7 @@ router.post("/", async (req, res) => {
       "INSERT INTO mods (vehicle_id, name, category, cost, install_date, notes) VALUES (?, ?, ?, ?, ?, ?)",
       [vehicle_id, name, category, cost, install_date || null, notes || null]
     );
-    res.status(201).json({ id: result.lastID, vehicle_id, name, category, cost, install_date, notes: notes || null, image: null });
+    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, name, category, cost, install_date, notes: notes || null, image: null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -90,8 +90,17 @@ router.delete("/:id", async (req, res) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function dbAll(sql, p = []) { return new Promise((res, rej) => db.all(sql, p, (e, r) => e ? rej(e) : res(r))); }
-function dbGet(sql, p = []) { return new Promise((res, rej) => db.get(sql, p, (e, r) => e ? rej(e) : res(r))); }
-function dbRun(sql, p = []) { return new Promise((res, rej) => db.run(sql, p, function(e) { e ? rej(e) : res(this); })); }
+function dbAll(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).all(p)); }
+  catch (e) { return Promise.reject(e); }
+}
+function dbGet(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).get(p)); }
+  catch (e) { return Promise.reject(e); }
+}
+function dbRun(sql, p = []) {
+  try { return Promise.resolve(db.prepare(sql).run(p)); }
+  catch (e) { return Promise.reject(e); }
+}
 
 module.exports = router;
