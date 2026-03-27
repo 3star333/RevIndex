@@ -1,0 +1,27 @@
+# ── Node ──────────────────────────────────────────────
+node_modules/
+
+# ── Environment variables (NEVER commit these) ────────
+.env
+.env.local
+.env.production
+
+# ── SQLite database (contains real user data) ─────────
+server/db/carlog.db
+
+# ── Uploaded images ────────────────────────────────────
+server/uploads/*
+!server/uploads/.gitkeep
+
+# ── Vite / React build output ──────────────────────────
+client/dist/
+server/public/*
+!server/public/.gitkeep
+
+# ── OS junk ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────
+.vscode/settings.json
+*.swp
