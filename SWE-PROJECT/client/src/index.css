@@ -205,3 +205,50 @@ a:visited { color: #800080; }
 @media (prefers-reduced-motion: reduce) {
   .rainbow-text, .blink, .pulse-badge { animation: none; }
 }
+
+/* ── Responsive layout ─────────────────────────────────────────── */
+.app-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px;
+}
+
+@media (max-width: 700px) {
+  .app-container { padding: 4px; }
+
+  /* PostBox: collapse left user card to narrower strip */
+  .postbox-grid {
+    grid-template-columns: 80px 1fr !important;
+  }
+  .postbox-avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* Nav: smaller buttons */
+  .win-btn { padding: 4px 8px; font-size: 12px; }
+
+  /* Tables: allow horizontal scroll */
+  .win-table-wrap { overflow-x: auto; }
+
+  /* Profile page: full width */
+  .profile-wrap { max-width: 100% !important; }
+
+  /* Title bar text: truncate */
+  .win-title-bar { font-size: 12px; }
+}
+
+@media (max-width: 480px) {
+  body { font-size: 12px; }
+
+  .postbox-grid {
+    grid-template-columns: 64px 1fr !important;
+  }
+
+  /* Hide post # label on tiny screens */
+  .postbox-postnum { display: none; }
+
+  /* Stack reply form buttons */
+  .reply-actions { flex-direction: column !important; align-items: stretch !important; }
+  .reply-actions button { width: 100%; }
+}

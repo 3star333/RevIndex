@@ -7,6 +7,7 @@ import GaragePage    from "./pages/GaragePage";
 import ThreadPage    from "./pages/ThreadPage";
 import LoginPage     from "./pages/LoginPage";
 import RegisterPage  from "./pages/RegisterPage";
+import ProfilePage   from "./pages/ProfilePage";
 import { useAuth }   from "./context/AuthContext";
 
 const NAV = ["Forum", "Garage"];
@@ -16,7 +17,7 @@ export default function App() {
   const [page,            setPage]            = useState("Forum");
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedThread,  setSelectedThread]  = useState(null);
-  const [authPage,        setAuthPage]        = useState(null); // "login" | "register" | null
+  const [authPage,        setAuthPage]        = useState(null); // "login" | "register" | "profile" | null
 
   function navigate(dest, vehicle = null) {
     setSelectedVehicle(vehicle);
@@ -42,6 +43,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#C0C0C0" }}>
+      <div className="app-container">
 
       {/* ── Title bar ──────────────────────────────────────────────── */}
       <div className="win-title-bar" style={{ padding: "4px 8px", fontSize: "14px" }}>
@@ -93,7 +95,8 @@ export default function App() {
               <img src={user.avatar_url} alt="avatar"
                 style={{ width: "20px", height: "20px", objectFit: "cover", border: "1px solid #808080" }} />
             )}
-            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#000080" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#000080", cursor: "pointer" }}
+              onClick={() => setAuthPage("profile")}>
               {user.username}
             </span>
             <button className="win-btn" style={{ fontSize: "10px", padding: "1px 6px" }} onClick={logout}>
@@ -134,6 +137,7 @@ export default function App() {
             <span style={{ flex: 1 }}>
               {authPage === "login"    ? "Login"
                 : authPage === "register" ? "Register"
+                : authPage === "profile"  ? "My Profile"
                 : selectedVehicle
                 ? `${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model} — Detail`
                 : selectedThread
@@ -150,6 +154,8 @@ export default function App() {
               />
             ) : authPage === "register" ? (
               <RegisterPage onGoLogin={() => setAuthPage("login")} />
+            ) : authPage === "profile" ? (
+              <ProfilePage onClose={() => setAuthPage(null)} />
             ) : selectedVehicle ? (
               <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Garage")} />
             ) : page === "Forum" && selectedThread ? (
@@ -174,6 +180,7 @@ export default function App() {
         <span>|</span>
         <span className="blink" style={{ color: "#FF0000", fontWeight: "bold" }}>● LIVE</span>
       </div>
+      </div>{/* app-container */}
     </div>
   );
 }

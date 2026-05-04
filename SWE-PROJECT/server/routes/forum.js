@@ -76,7 +76,8 @@ router.get("/:id", (req, res) => {
   try {
     const thread = db.prepare(`
       SELECT t.*, v.make, v.model, v.year, v.nickname, v.image AS vehicle_image,
-             u.username AS author_username, u.avatar_url AS author_avatar
+             u.username AS author_username, u.avatar_url AS author_avatar,
+             u.profile_gif AS author_profile_gif, u.signature AS author_signature
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
       LEFT JOIN users u ON u.id = t.user_id
@@ -105,7 +106,8 @@ router.get("/:id/comments", (req, res) => {
   if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   try {
     const rows = db.prepare(`
-      SELECT c.*, u.username AS author_username, u.avatar_url AS author_avatar
+      SELECT c.*, u.username AS author_username, u.avatar_url AS author_avatar,
+             u.profile_gif AS author_profile_gif, u.signature AS author_signature
       FROM comments c
       LEFT JOIN users u ON u.id = c.user_id
       WHERE c.thread_id = ?
@@ -134,8 +136,10 @@ router.post("/:id/comments", optionalAuth, (req, res) => {
     res.status(201).json({
       id: result.lastInsertRowid, thread_id,
       author, content, user_id,
-      author_username: req.user?.username || null,
-      author_avatar:   req.user?.avatar_url || null,
+      author_username:    req.user?.username    || null,
+      author_avatar:      req.user?.avatar_url  || null,
+      author_profile_gif: req.user?.profile_gif || null,
+      author_signature:   req.user?.signature   || null,
       likes: 0,
       created_at: new Date().toISOString(),
     });

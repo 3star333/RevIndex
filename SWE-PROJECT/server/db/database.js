@@ -194,6 +194,8 @@ for (const sql of [
   "ALTER TABLE logs ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE threads ADD COLUMN user_id INTEGER REFERENCES users(id)",
   "ALTER TABLE comments ADD COLUMN user_id INTEGER REFERENCES users(id)",
+  "ALTER TABLE users ADD COLUMN profile_gif TEXT",
+  "ALTER TABLE users ADD COLUMN signature TEXT",
 ]) {
   try { db.exec(sql); } catch (e) {
     if (!e.message.includes("duplicate column")) console.error("Migration error:", e.message);

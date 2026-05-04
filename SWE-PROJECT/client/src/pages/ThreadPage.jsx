@@ -185,7 +185,16 @@ export default function ThreadPage({ thread, onBack }) {
                   placeholder="Type your reply here..."
                   value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
               </div>
-              <div style={{ textAlign: "right" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <button type="button" className="win-btn"
+                  style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
+                  onClick={() => {
+                    const url = prompt("Paste a YouTube or Vimeo URL:");
+                    if (url) setForm(f => ({ ...f, content: f.content + (f.content ? "\n" : "") + url }));
+                  }}>
+                  📹 Embed Video
+                </button>
+                <div style={{ flex: 1 }} />
                 <button type="submit" className="win-btn win-btn-primary" disabled={posting}>
                   {posting ? "Posting…" : "[ Post Reply ]"}
                 </button>
@@ -219,9 +228,48 @@ function Pagination({ page, totalPages, onPage }) {
 }
 
 function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editContent, onEditChange, onEditSave, onEditCancel }) {
-  const { postNum, author, author_username, author_avatar, date, content, isOP, likes } = post;
+  const { postNum, author, author_username, author_avatar, author_profile_gif, author_signature, date, content, isOP, likes } = post;
   const displayName   = author_username || author || "Anonymous";
   const formattedDate = date ? new Date(date).toLocaleString() : "";
+
+  // Parse content: detect YouTube/Vimeo URLs and render as embeds
+  function renderContent(text) {
+    const lines = text.split("\n");
+    return lines.map((line, i) => {
+      const ytMatch = line.trim().match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+      const vmMatch = line.trim().match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/);
+      if (ytMatch) {
+        return (
+          <div key={i} style={{ margin: "6px 0" }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${ytMatch[1]}`}
+              style={{ width: "100%", maxWidth: "480px", aspectRatio: "16/9", border: "2px inset #808080" }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen title="YouTube video" />
+          </div>
+        );
+      }
+      if (vmMatch) {
+        return (
+          <div key={i} style={{ margin: "6px 0" }}>
+            <iframe
+              src={`https://player.vimeo.com/video/${vmMatch[1]}`}
+              style={{ width: "100%", maxWidth: "480px", aspectRatio: "16/9", border: "2px inset #808080" }}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen title="Vimeo video" />
+          </div>
+        );
+      }
+      if (line.startsWith("> ")) {
+        return (
+          <div key={i} style={{ borderLeft: "3px solid #808080", paddingLeft: "8px", color: "#555", fontStyle: "italic", marginBottom: "2px" }}>
+            {line.slice(2)}
+          </div>
+        );
+      }
+      return <span key={i}>{line}<br /></span>;
+    });
+  }
 
   return (
     <div className="win-panel" style={{ padding: 0 }}>
@@ -245,6 +293,10 @@ function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editConte
           <div style={{ fontSize: "10px", color: "#C0C0C0", marginTop: "2px" }}>Post #{postNum}</div>
           {!isOP && likes > 0 && (
             <div style={{ fontSize: "10px", color: "#FFD700", marginTop: "2px" }}>👍 {likes}</div>
+          )}
+          {author_profile_gif && (
+            <img src={author_profile_gif} alt="" style={{ width: "56px", marginTop: "4px" }}
+              onError={e => { e.target.style.display = "none"; }} />
           )}
         </div>
 
@@ -289,15 +341,14 @@ function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editConte
               </div>
             </div>
           ) : (
-            <div style={{ padding: "8px 10px", fontSize: "12px", lineHeight: "1.7", flex: 1 }}>
-              {content.split("\n").map((line, i) =>
-                line.startsWith("> ") ? (
-                  <div key={i} style={{ borderLeft: "3px solid #808080", paddingLeft: "8px", color: "#555", fontStyle: "italic", marginBottom: "2px" }}>
-                    {line.slice(2)}
-                  </div>
-                ) : (
-                  <span key={i}>{line}<br /></span>
-                )
+            <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+              <div style={{ padding: "8px 10px", fontSize: "12px", lineHeight: "1.7", flex: 1 }}>
+                {renderContent(content)}
+              </div>
+              {author_signature && (
+                <div style={{ borderTop: "1px dashed #808080", margin: "0 10px 6px", paddingTop: "4px", fontSize: "10px", color: "#808080", fontStyle: "italic" }}>
+                  {author_signature}
+                </div>
               )}
             </div>
           )}

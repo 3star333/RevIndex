@@ -109,11 +109,13 @@ router.post("/login", async (req, res) => {
   res.json({
     token,
     user: {
-      id:         user.id,
-      username:   user.username,
-      email:      user.email,
-      avatar_url: user.avatar_url,
-      bio:        user.bio,
+      id:          user.id,
+      username:    user.username,
+      email:       user.email,
+      avatar_url:  user.avatar_url,
+      bio:         user.bio,
+      profile_gif: user.profile_gif,
+      signature:   user.signature,
     },
   });
 });
@@ -125,10 +127,10 @@ router.get("/me", requireAuth, (req, res) => {
 
 // ── PUT /auth/profile ─────────────────────────────────────────────────────────
 router.put("/profile", requireAuth, async (req, res) => {
-  const { bio, avatar_url } = req.body;
-  db.prepare("UPDATE users SET bio = ?, avatar_url = ? WHERE id = ?")
-    .run(bio || null, avatar_url || null, req.user.id);
-  const updated = db.prepare("SELECT id, username, email, avatar_url, bio FROM users WHERE id = ?").get(req.user.id);
+  const { bio, avatar_url, profile_gif, signature } = req.body;
+  db.prepare("UPDATE users SET bio = ?, avatar_url = ?, profile_gif = ?, signature = ? WHERE id = ?")
+    .run(bio || null, avatar_url || null, profile_gif || null, signature || null, req.user.id);
+  const updated = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature FROM users WHERE id = ?").get(req.user.id);
   res.json(updated);
 });
 
