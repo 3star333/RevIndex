@@ -168,12 +168,32 @@ db.exec(`
   );
 `);
 
+// Users table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    username           TEXT    NOT NULL UNIQUE,
+    email              TEXT    NOT NULL UNIQUE,
+    password_hash      TEXT    NOT NULL,
+    avatar_url         TEXT,
+    bio                TEXT,
+    email_verified     INTEGER NOT NULL DEFAULT 0,
+    verification_token TEXT,
+    created_at         TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
 // Migrations — safe to run on existing DBs
 for (const sql of [
   "ALTER TABLE vehicles ADD COLUMN image TEXT",
   "ALTER TABLE vehicles ADD COLUMN vin TEXT",
   "ALTER TABLE threads ADD COLUMN tag TEXT DEFAULT 'General'",
   "ALTER TABLE comments ADD COLUMN likes INTEGER DEFAULT 0",
+  "ALTER TABLE vehicles ADD COLUMN user_id INTEGER REFERENCES users(id)",
+  "ALTER TABLE vehicles ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1",
+  "ALTER TABLE logs ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE threads ADD COLUMN user_id INTEGER REFERENCES users(id)",
+  "ALTER TABLE comments ADD COLUMN user_id INTEGER REFERENCES users(id)",
 ]) {
   try { db.exec(sql); } catch (e) {
     if (!e.message.includes("duplicate column")) console.error("Migration error:", e.message);
@@ -181,6 +201,20 @@ for (const sql of [
 }
 
 console.log("Database tables verified/created.");
+
+// Seed "dev" user and assign existing orphaned data to them
+const bcrypt = require("bcryptjs");
+const devUser = db.prepare("SELECT id FROM users WHERE username = 'dev'").get();
+if (!devUser) {
+  const hash = bcrypt.hashSync("devpassword123", 10);
+  db.prepare(`INSERT INTO users (username, email, password_hash, email_verified)
+              VALUES ('dev', 'dev@revindex.local', ?, 1)`).run(hash);
+  console.log("Dev user created.");
+}
+const devId = db.prepare("SELECT id FROM users WHERE username = 'dev'").get().id;
+db.prepare("UPDATE vehicles SET user_id = ? WHERE user_id IS NULL").run(devId);
+db.prepare("UPDATE threads  SET user_id = ? WHERE user_id IS NULL").run(devId);
+db.prepare("UPDATE comments SET user_id = ? WHERE user_id IS NULL").run(devId);
 
 // ── Async-compatible helpers (better-sqlite3 is sync, wrap for route compat) ──
 db.allAsync = (sql, params = []) => {

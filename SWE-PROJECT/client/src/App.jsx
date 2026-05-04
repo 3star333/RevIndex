@@ -5,27 +5,40 @@ import VehiclesPage  from "./pages/VehiclesPage";
 import VehicleDetail from "./pages/VehicleDetail";
 import GaragePage    from "./pages/GaragePage";
 import ThreadPage    from "./pages/ThreadPage";
+import LoginPage     from "./pages/LoginPage";
+import RegisterPage  from "./pages/RegisterPage";
+import { useAuth }   from "./context/AuthContext";
 
-const NAV = ["Vehicles", "Garage"];
+const NAV = ["Forum", "Garage"];
 
 export default function App() {
-  const [page, setPage]                       = useState("Vehicles");
+  const { user, logout, loading } = useAuth();
+  const [page,            setPage]            = useState("Forum");
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [selectedThread, setSelectedThread]   = useState(null);
+  const [selectedThread,  setSelectedThread]  = useState(null);
+  const [authPage,        setAuthPage]        = useState(null); // "login" | "register" | null
 
   function navigate(dest, vehicle = null) {
     setSelectedVehicle(vehicle);
     setSelectedThread(null);
+    setAuthPage(null);
     setPage(dest);
   }
 
   function openThread(thread) {
     setSelectedThread(thread);
-    setPage("Garage");
+    setPage("Forum");
     setSelectedVehicle(null);
+    setAuthPage(null);
   }
 
-  const activePage = selectedVehicle ? "VehicleDetail" : page;
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#C0C0C0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="win-panel" style={{ padding: "20px 40px", fontSize: "14px" }}>Loading RevIndex...</div>
+    </div>
+  );
+
+  const activePage = authPage ? authPage : selectedVehicle ? "VehicleDetail" : page;
 
   return (
     <div style={{ minHeight: "100vh", background: "#C0C0C0" }}>
@@ -73,8 +86,29 @@ export default function App() {
 
         <div style={{ flex: 1 }} />
 
+        {/* Auth area */}
+        {user ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {user.avatar_url && (
+              <img src={user.avatar_url} alt="avatar"
+                style={{ width: "20px", height: "20px", objectFit: "cover", border: "1px solid #808080" }} />
+            )}
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#000080" }}>
+              {user.username}
+            </span>
+            <button className="win-btn" style={{ fontSize: "10px", padding: "1px 6px" }} onClick={logout}>
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "2px" }}>
+            <button className="win-btn" style={{ fontSize: "11px" }} onClick={() => setAuthPage("login")}>Login</button>
+            <button className="win-btn" style={{ fontSize: "11px", background: "#000080", color: "#fff" }} onClick={() => setAuthPage("register")}>Register</button>
+          </div>
+        )}
+
         {/* Hit counter */}
-        <span style={{ fontSize: "11px", marginRight: "4px" }}>Visitors:</span>
+        <span style={{ fontSize: "11px", marginLeft: "8px", marginRight: "4px" }}>Visitors:</span>
         <span className="win-counter">001337</span>
       </div>
 
@@ -98,23 +132,32 @@ export default function App() {
           <div className="win-title-bar">
             <span>📁</span>
             <span style={{ flex: 1 }}>
-              {selectedVehicle
+              {authPage === "login"    ? "Login"
+                : authPage === "register" ? "Register"
+                : selectedVehicle
                 ? `${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model} — Detail`
                 : selectedThread
-                ? `Garage › ${selectedThread.title}`
+                ? `Forum › ${selectedThread.title}`
                 : page}
             </span>
           </div>
 
           <div style={{ padding: "12px", background: "#C0C0C0" }}>
-            {selectedVehicle ? (
-              <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Vehicles")} />
-            ) : page === "Vehicles" ? (
-              <VehiclesPage onSelect={(v) => navigate("VehicleDetail", v)} />
-            ) : page === "Garage" && selectedThread ? (
+            {authPage === "login" ? (
+              <LoginPage
+                onSuccess={() => setAuthPage(null)}
+                onGoRegister={() => setAuthPage("register")}
+              />
+            ) : authPage === "register" ? (
+              <RegisterPage onGoLogin={() => setAuthPage("login")} />
+            ) : selectedVehicle ? (
+              <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Garage")} />
+            ) : page === "Forum" && selectedThread ? (
               <ThreadPage thread={selectedThread} onBack={() => setSelectedThread(null)} />
-            ) : (
+            ) : page === "Forum" ? (
               <GaragePage onOpenThread={openThread} />
+            ) : (
+              <VehiclesPage onSelect={(v) => navigate("VehicleDetail", v)} />
             )}
           </div>
         </div>

@@ -14,6 +14,7 @@ const modRoutes      = require("./routes/mods");
 const photoRoutes    = require("./routes/photos");
 const forumRoutes    = require("./routes/forum");
 const vinRoutes      = require("./routes/vin");
+const authRoutes     = require("./routes/auth");
 const performanceRoutes = require("./routes/performance");
 const fuelRoutes     = require("./routes/fuel");
 const wishlistRoutes = require("./routes/wishlist");
@@ -31,7 +32,7 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 const corsOptions = {
   origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
   methods: ["GET", "POST", "DELETE", "PATCH", "PUT"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 app.use(cors(corsOptions));
 
@@ -41,8 +42,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // ── Static file serving for uploaded images ───────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/smilies", express.static(path.join(__dirname, "public", "smilies")));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.use("/api/auth", authRoutes);
 app.use("/vehicles", vehicleRoutes);
 app.use("/vehicles", photoRoutes);
 app.use("/logs",     logRoutes);
