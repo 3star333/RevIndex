@@ -2,6 +2,7 @@ const express = require("express");
 const router  = express.Router();
 const db      = require("../db/database");
 const { sanitizeString, isValidInt } = require("../models/validate");
+const { optionalAuth, requireAuth } = require("../middleware/auth");
 
 const VALID_TAGS  = ["General", "Build Log", "Question", "For Sale", "Tech", "Help", "Off Topic"];
 const VALID_SORTS = {
@@ -20,10 +21,12 @@ router.get("/", (req, res) => {
     const sql = `
       SELECT t.*,
              v.make, v.model, v.year, v.nickname, v.image AS vehicle_image,
+             u.username AS author_username, u.avatar_url AS author_avatar,
              COUNT(c.id) AS reply_count,
              MAX(c.created_at) AS last_reply
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
+      LEFT JOIN users u ON u.id = t.user_id
       LEFT JOIN comments c ON c.thread_id = t.id
       ${tagFilter ? "WHERE t.tag = ?" : ""}
       GROUP BY t.id
@@ -46,11 +49,12 @@ router.get("/stats", (req, res) => {
 });
 
 // ── POST /threads ─────────────────────────────────────────────────────────────
-router.post("/", (req, res) => {
+router.post("/", optionalAuth, (req, res) => {
   const vehicle_id  = Number(req.body.vehicle_id);
   const title       = sanitizeString(req.body.title);
   const description = sanitizeString(req.body.description || "");
   const tag         = VALID_TAGS.includes(req.body.tag) ? req.body.tag : "General";
+  const user_id     = req.user?.id || null;
 
   if (!isValidInt(vehicle_id, 1)) return res.status(400).json({ error: "vehicle_id required." });
   if (!title)                     return res.status(400).json({ error: "title required." });
@@ -59,9 +63,9 @@ router.post("/", (req, res) => {
     const vRow = db.prepare("SELECT id FROM vehicles WHERE id = ?").get(vehicle_id);
     if (!vRow) return res.status(404).json({ error: "Vehicle not found." });
     const result = db.prepare(
-      "INSERT INTO threads (vehicle_id, title, description, tag) VALUES (?, ?, ?, ?)"
-    ).run(vehicle_id, title, description || null, tag);
-    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, title, description: description || null, tag });
+      "INSERT INTO threads (vehicle_id, title, description, tag, user_id) VALUES (?, ?, ?, ?, ?)"
+    ).run(vehicle_id, title, description || null, tag, user_id);
+    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, title, description: description || null, tag, user_id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -71,9 +75,11 @@ router.get("/:id", (req, res) => {
   if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   try {
     const thread = db.prepare(`
-      SELECT t.*, v.make, v.model, v.year, v.nickname, v.image AS vehicle_image
+      SELECT t.*, v.make, v.model, v.year, v.nickname, v.image AS vehicle_image,
+             u.username AS author_username, u.avatar_url AS author_avatar
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
+      LEFT JOIN users u ON u.id = t.user_id
       WHERE t.id = ?
     `).get(id);
     if (!thread) return res.status(404).json({ error: "Thread not found." });
@@ -98,18 +104,23 @@ router.get("/:id/comments", (req, res) => {
   const id = Number(req.params.id);
   if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   try {
-    const rows = db.prepare(
-      "SELECT * FROM comments WHERE thread_id = ? ORDER BY created_at ASC"
-    ).all(id);
+    const rows = db.prepare(`
+      SELECT c.*, u.username AS author_username, u.avatar_url AS author_avatar
+      FROM comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.thread_id = ?
+      ORDER BY c.created_at ASC
+    `).all(id);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── POST /threads/:id/comments ────────────────────────────────────────────────
-router.post("/:id/comments", (req, res) => {
+router.post("/:id/comments", optionalAuth, (req, res) => {
   const thread_id = Number(req.params.id);
-  const author    = sanitizeString(req.body.author || "Anonymous");
+  const author    = sanitizeString(req.body.author || (req.user?.username) || "Anonymous");
   const content   = sanitizeString(req.body.content);
+  const user_id   = req.user?.id || null;
 
   if (!isValidInt(thread_id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   if (!content)                  return res.status(400).json({ error: "content required." });
@@ -118,11 +129,13 @@ router.post("/:id/comments", (req, res) => {
     const tRow = db.prepare("SELECT id FROM threads WHERE id = ?").get(thread_id);
     if (!tRow) return res.status(404).json({ error: "Thread not found." });
     const result = db.prepare(
-      "INSERT INTO comments (thread_id, author, content) VALUES (?, ?, ?)"
-    ).run(thread_id, author || "Anonymous", content);
+      "INSERT INTO comments (thread_id, author, content, user_id) VALUES (?, ?, ?, ?)"
+    ).run(thread_id, author, content, user_id);
     res.status(201).json({
       id: result.lastInsertRowid, thread_id,
-      author: author || "Anonymous", content,
+      author, content, user_id,
+      author_username: req.user?.username || null,
+      author_avatar:   req.user?.avatar_url || null,
       likes: 0,
       created_at: new Date().toISOString(),
     });

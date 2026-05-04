@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import API_URL from "../api/config";
+import { useAuth } from "../context/AuthContext";
 
 const PAGE_SIZE = 10;
 const TAG_COLORS = {
@@ -8,9 +9,10 @@ const TAG_COLORS = {
 };
 
 export default function ThreadPage({ thread, onBack }) {
+  const { user, authHeader } = useAuth();
   const [threadData,   setThreadData]   = useState(null);
   const [comments,     setComments]     = useState([]);
-  const [form,         setForm]         = useState({ author: "", content: "" });
+  const [form,         setForm]         = useState({ content: "" });
   const [posting,      setPosting]      = useState(false);
   const [error,        setError]        = useState("");
   const [page,         setPage]         = useState(1);
@@ -39,8 +41,8 @@ export default function ThreadPage({ thread, onBack }) {
     try {
       const res  = await fetch(`${API_URL}/threads/${thread.id}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ author: form.author || "Anonymous", content: form.content }),
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ author: user?.username || "Anonymous", content: form.content }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -171,26 +173,29 @@ export default function ThreadPage({ thread, onBack }) {
       <div className="win-panel" style={{ padding: 0 }} ref={replyRef}>
         <div className="win-title-bar"><span>📝 Post a Reply</span></div>
         <div style={{ padding: "10px" }}>
-          <form onSubmit={handlePost} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Your Name (optional)</label>
-              <input className="win-input" placeholder="Anonymous"
-                value={form.author} onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
-                style={{ width: "200px" }} />
+          {user ? (
+            <form onSubmit={handlePost} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ fontSize: "12px", color: "#808080" }}>
+                Posting as <strong style={{ color: "#000080" }}>{user.username}</strong>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Reply *</label>
+                <textarea className="win-input" rows={5}
+                  style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }}
+                  placeholder="Type your reply here..."
+                  value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <button type="submit" className="win-btn win-btn-primary" disabled={posting}>
+                  {posting ? "Posting…" : "[ Post Reply ]"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{ padding: "12px", textAlign: "center", color: "#808080", fontSize: "12px" }}>
+              You must be <strong>logged in</strong> to reply.
             </div>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Reply *</label>
-              <textarea className="win-input" rows={5}
-                style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }}
-                placeholder="Type your reply here..."
-                value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <button type="submit" className="win-btn win-btn-primary" disabled={posting}>
-                {posting ? "Posting…" : "[ Post Reply ]"}
-              </button>
-            </div>
-          </form>
+          )}
         </div>
       </div>
     </div>
@@ -214,7 +219,8 @@ function Pagination({ page, totalPages, onPage }) {
 }
 
 function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editContent, onEditChange, onEditSave, onEditCancel }) {
-  const { postNum, author, date, content, isOP, likes } = post;
+  const { postNum, author, author_username, author_avatar, date, content, isOP, likes } = post;
+  const displayName   = author_username || author || "Anonymous";
   const formattedDate = date ? new Date(date).toLocaleString() : "";
 
   return (
@@ -227,10 +233,12 @@ function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editConte
           background: isOP ? "#000080" : "#404040", color: "#fff",
           display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
         }}>
-          <div style={{ width: "44px", height: "44px", background: "#C0C0C0", border: "2px outset #fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
-            {isOP ? "👤" : "💬"}
+          <div style={{ width: "44px", height: "44px", background: "#C0C0C0", border: "2px outset #fff", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
+            {author_avatar
+              ? <img src={author_avatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : isOP ? "👤" : "💬"}
           </div>
-          <div style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", wordBreak: "break-all" }}>{author}</div>
+          <div style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", wordBreak: "break-all" }}>{displayName}</div>
           {isOP && (
             <div style={{ fontSize: "10px", background: "#FFD700", color: "#000", padding: "1px 4px", fontWeight: "bold" }}>OP</div>
           )}

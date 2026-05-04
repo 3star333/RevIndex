@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import API_URL from "../api/config";
+import { useAuth } from "../context/AuthContext";
 
 const TAGS = ["All", "General", "Build Log", "Question", "For Sale", "Tech", "Help", "Off Topic"];
 const SORTS = [
@@ -27,6 +28,7 @@ function markSeen(threadId) {
 }
 
 export default function GaragePage({ onOpenThread }) {
+  const { user, authHeader } = useAuth();
   const [threads,   setThreads]   = useState([]);
   const [vehicles,  setVehicles]  = useState([]);
   const [stats,     setStats]     = useState({ thread_count: 0, post_count: 0 });
@@ -59,7 +61,7 @@ export default function GaragePage({ onOpenThread }) {
     try {
       const res  = await fetch(`${API_URL}/threads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify(form),
       });
       const data = await res.json();
@@ -100,9 +102,13 @@ export default function GaragePage({ onOpenThread }) {
       <div className="win-panel" style={{ padding: 0 }}>
         <div className="win-title-bar" style={{ justifyContent: "space-between" }}>
           <span>🔧 THE GARAGE — Build Threads &amp; Discussion</span>
-          <button className="win-btn" onClick={() => setShowForm(f => !f)}>
-            {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
-          </button>
+          {user ? (
+            <button className="win-btn" onClick={() => setShowForm(f => !f)}>
+              {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
+            </button>
+          ) : (
+            <span style={{ fontSize: "11px", color: "#FFFF00", padding: "0 8px" }}>Login to post</span>
+          )}
         </div>
         <div style={{ padding: "5px 8px", background: "#C0C0C0", borderBottom: "2px solid #808080", display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
           {TAGS.map(tag => (
@@ -220,6 +226,14 @@ export default function GaragePage({ onOpenThread }) {
                       <div style={{ fontSize: "11px", color: "#808080" }}>
                         {t.year} {t.make} {t.model}{t.nickname ? ` "${t.nickname}"` : ""}
                       </div>
+                      {t.author_username && (
+                        <div style={{ fontSize: "10px", color: "#4B0082", display: "flex", alignItems: "center", gap: "3px", marginTop: "1px" }}>
+                          {t.author_avatar
+                            ? <img src={t.author_avatar} alt="" style={{ width: "12px", height: "12px", objectFit: "cover", borderRadius: "1px" }} />
+                            : <span>👤</span>}
+                          {t.author_username}
+                        </div>
+                      )}
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <span style={{ background: TAG_COLORS[t.tag] || "#808080", color: "#fff", fontSize: "10px", padding: "1px 5px", fontWeight: "bold", whiteSpace: "nowrap", display: "inline-block" }}>
