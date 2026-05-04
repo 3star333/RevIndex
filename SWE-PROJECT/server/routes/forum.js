@@ -11,6 +11,24 @@ const VALID_SORTS = {
   oldest:  "t.created_at ASC",
 };
 
+// ── GET /stats ────────────────────────────────────────────────────────────────
+router.get("/stats", (req, res) => {
+  try {
+    const members  = db.prepare("SELECT COUNT(*) AS n FROM users").get().n;
+    const threads  = db.prepare("SELECT COUNT(*) AS n FROM threads").get().n;
+    const posts    = db.prepare("SELECT COUNT(*) AS n FROM comments").get().n;
+    const vehicles = db.prepare("SELECT COUNT(*) AS n FROM vehicles").get().n;
+    const latest   = db.prepare(`
+      SELECT t.id, t.title, t.tag, t.created_at,
+             u.username AS author_username
+      FROM threads t
+      LEFT JOIN users u ON u.id = t.user_id
+      ORDER BY t.created_at DESC LIMIT 5
+    `).all();
+    res.json({ members, threads, posts, vehicles, latest });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── GET /threads ──────────────────────────────────────────────────────────────
 router.get("/", (req, res) => {
   try {

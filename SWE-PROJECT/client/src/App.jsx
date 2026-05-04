@@ -8,6 +8,8 @@ import ThreadPage    from "./pages/ThreadPage";
 import LoginPage     from "./pages/LoginPage";
 import RegisterPage  from "./pages/RegisterPage";
 import ProfilePage   from "./pages/ProfilePage";
+import LeftSidebar   from "./components/LeftSidebar";
+import RightSidebar  from "./components/RightSidebar";
 import { useAuth }   from "./context/AuthContext";
 
 const NAV = ["Forum", "Garage"];
@@ -129,44 +131,59 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Main window ────────────────────────────────────────────── */}
-      <div style={{ padding: "8px", maxWidth: "960px", margin: "0 auto" }}>
-        <div className="win-panel" style={{ padding: "0" }}>
-          <div className="win-title-bar">
-            <span>📁</span>
-            <span style={{ flex: 1 }}>
-              {authPage === "login"    ? "Login"
-                : authPage === "register" ? "Register"
-                : authPage === "profile"  ? "My Profile"
-                : selectedVehicle
-                ? `${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model} — Detail`
-                : selectedThread
-                ? `Forum › ${selectedThread.title}`
-                : page}
-            </span>
-          </div>
+      {/* ── 3-column layout ────────────────────────────────────────── */}
+      <div className="sidebar-layout">
 
-          <div style={{ padding: "12px", background: "#C0C0C0" }}>
-            {authPage === "login" ? (
-              <LoginPage
-                onSuccess={() => setAuthPage(null)}
-                onGoRegister={() => setAuthPage("register")}
-              />
-            ) : authPage === "register" ? (
-              <RegisterPage onGoLogin={() => setAuthPage("login")} />
-            ) : authPage === "profile" ? (
-              <ProfilePage onClose={() => setAuthPage(null)} />
-            ) : selectedVehicle ? (
-              <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Garage")} />
-            ) : page === "Forum" && selectedThread ? (
-              <ThreadPage thread={selectedThread} onBack={() => setSelectedThread(null)} />
-            ) : page === "Forum" ? (
-              <GaragePage onOpenThread={openThread} />
-            ) : (
-              <VehiclesPage onSelect={(v) => navigate("VehicleDetail", v)} />
-            )}
+        {/* Left sidebar */}
+        <div className="app-sidebar app-sidebar-left">
+          <LeftSidebar onNavigate={navigate} />
+        </div>
+
+        {/* Main content */}
+        <div style={{ minWidth: 0 }}>
+          <div className="win-panel" style={{ padding: "0" }}>
+            <div className="win-title-bar">
+              <span>📁</span>
+              <span style={{ flex: 1 }}>
+                {authPage === "login"    ? "Login"
+                  : authPage === "register" ? "Register"
+                  : authPage === "profile"  ? "My Profile"
+                  : selectedVehicle
+                  ? `${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model} — Detail`
+                  : selectedThread
+                  ? `Forum › ${selectedThread.title}`
+                  : page}
+              </span>
+            </div>
+
+            <div style={{ padding: "12px", background: "#C0C0C0" }}>
+              {authPage === "login" ? (
+                <LoginPage
+                  onSuccess={() => setAuthPage(null)}
+                  onGoRegister={() => setAuthPage("register")}
+                />
+              ) : authPage === "register" ? (
+                <RegisterPage onGoLogin={() => setAuthPage("login")} />
+              ) : authPage === "profile" ? (
+                <ProfilePage onClose={() => setAuthPage(null)} />
+              ) : selectedVehicle ? (
+                <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Garage")} />
+              ) : page === "Forum" && selectedThread ? (
+                <ThreadPage thread={selectedThread} onBack={() => setSelectedThread(null)} />
+              ) : page === "Forum" ? (
+                <GaragePage onOpenThread={openThread} />
+              ) : (
+                <VehiclesPage onSelect={(v) => navigate("VehicleDetail", v)} />
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Right sidebar */}
+        <div className="app-sidebar app-sidebar-right">
+          <RightSidebar onOpenThread={openThread} />
+        </div>
+
       </div>
 
       {/* ── Status bar ─────────────────────────────────────────────── */}

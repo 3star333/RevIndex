@@ -206,6 +206,23 @@ a:visited { color: #800080; }
   .rainbow-text, .blink, .pulse-badge { animation: none; }
 }
 
+/* ── Sidebar 3-column layout ───────────────────────────────────── */
+.sidebar-layout {
+  display: grid;
+  grid-template-columns: 178px 1fr 178px;
+  gap: 8px;
+  padding: 8px;
+  align-items: start;
+}
+
+/* Hide sidebars below 1100px — main content fills full width */
+@media (max-width: 1100px) {
+  .sidebar-layout {
+    grid-template-columns: 1fr;
+  }
+  .app-sidebar { display: none; }
+}
+
 /* ── Responsive layout ─────────────────────────────────────────── */
 .app-container {
   max-width: 960px;
