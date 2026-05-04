@@ -3,8 +3,13 @@ import API_URL from "../api/config";
 import ImageUpload from "../components/ImageUpload";
 import PhotoGallery from "../components/PhotoGallery";
 import ModsTab from "../components/ModsTab";
+import PerformanceTab from "../components/PerformanceTab";
+import FuelTab from "../components/FuelTab";
+import WishlistTab from "../components/WishlistTab";
+import SpecsTab from "../components/SpecsTab";
+import TrackDaysTab from "../components/TrackDaysTab";
 
-const TABS = ["Overview", "Photos", "Mods", "Maintenance"];
+const TABS = ["Overview", "Photos", "Mods", "Maintenance", "Performance", "Fuel", "Wishlist", "Specs", "Track Days"];
 
 export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
   const [vehicle, setVehicle] = useState(initialVehicle);
@@ -156,7 +161,7 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
               zIndex: t === tab ? 1 : 0,
             }}
           >
-            {t === "Overview" ? "🏁 " : t === "Photos" ? "📷 " : t === "Mods" ? "🔧 " : "🛠 "}{t}
+            {t === "Overview" ? "🏁 " : t === "Photos" ? "📷 " : t === "Mods" ? "🔧 " : t === "Maintenance" ? "🛠 " : t === "Performance" ? "🏎 " : t === "Fuel" ? "⛽ " : t === "Wishlist" ? "🛒 " : t === "Specs" ? "📋 " : "🏁 "}{t}
           </button>
         ))}
       </div>
@@ -293,6 +298,21 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
           </div>
         </>
       )}
+
+      {/* ── Performance ── */}
+      {tab === "Performance" && <PerformanceTab vehicleId={vehicle.id} />}
+
+      {/* ── Fuel ── */}
+      {tab === "Fuel" && <FuelTab vehicleId={vehicle.id} />}
+
+      {/* ── Wishlist ── */}
+      {tab === "Wishlist" && <WishlistTab vehicleId={vehicle.id} />}
+
+      {/* ── Specs ── */}
+      {tab === "Specs" && <SpecsTab vehicleId={vehicle.id} />}
+
+      {/* ── Track Days ── */}
+      {tab === "Track Days" && <TrackDaysTab vehicleId={vehicle.id} />}
     </div>
   );
 }

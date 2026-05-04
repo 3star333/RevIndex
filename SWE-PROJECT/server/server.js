@@ -14,6 +14,11 @@ const modRoutes      = require("./routes/mods");
 const photoRoutes    = require("./routes/photos");
 const forumRoutes    = require("./routes/forum");
 const vinRoutes      = require("./routes/vin");
+const performanceRoutes = require("./routes/performance");
+const fuelRoutes     = require("./routes/fuel");
+const wishlistRoutes = require("./routes/wishlist");
+const specsRoutes    = require("./routes/specs");
+const trackdayRoutes = require("./routes/trackdays");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -25,7 +30,7 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const corsOptions = {
   origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
-  methods: ["GET", "POST", "DELETE", "PATCH"],
+  methods: ["GET", "POST", "DELETE", "PATCH", "PUT"],
   allowedHeaders: ["Content-Type"],
 };
 app.use(cors(corsOptions));
@@ -38,14 +43,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use("/vehicles", vehicleRoutes);  // GET /vehicles, POST /vehicles, POST /:id/image, GET /:id/logs
-app.use("/vehicles", photoRoutes);    // GET /:id/photos, POST /:id/photos, DELETE /:id/photos/:pid
-app.use("/logs",     logRoutes);      // POST /logs
-app.use("/photos",   photoRoutes);    // GET /logs/:logId/photos, POST /logs/:logId/photos
-app.use("/listings", listingRoutes);  // GET /listings, POST /listings
-app.use("/mods",     modRoutes);      // GET /mods?vehicle_id=X, POST /mods, POST /:id/image, DELETE /:id
-app.use("/threads",  forumRoutes);    // GET /threads, POST /threads, GET /:id, GET /:id/comments, POST /:id/comments
-app.use("/vin",      vinRoutes);      // GET /vin/decode?vin=, GET /vin/makes, GET /vin/models
+app.use("/vehicles", vehicleRoutes);
+app.use("/vehicles", photoRoutes);
+app.use("/logs",     logRoutes);
+app.use("/photos",   photoRoutes);
+app.use("/listings", listingRoutes);
+app.use("/mods",     modRoutes);
+app.use("/threads",  forumRoutes);
+app.use("/vin",      vinRoutes);
+app.use("/performance", performanceRoutes);
+app.use("/fuel",     fuelRoutes);
+app.use("/wishlist", wishlistRoutes);
+app.use("/specs",    specsRoutes);
+app.use("/trackdays", trackdayRoutes);
 
 app.get("/api", (req, res) => res.json({ message: "RevIndex API is running 🚗" }));
 

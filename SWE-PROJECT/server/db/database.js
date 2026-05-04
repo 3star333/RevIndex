@@ -89,12 +89,91 @@ db.exec(`
     created_at TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (thread_id) REFERENCES threads(id)
   );
+
+  CREATE TABLE IF NOT EXISTS performance_runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    run_type    TEXT    NOT NULL DEFAULT 'Dyno',
+    date        TEXT    NOT NULL,
+    hp          REAL,
+    tq          REAL,
+    zero_sixty  REAL,
+    quarter_et  REAL,
+    quarter_mph REAL,
+    boost_psi   REAL,
+    notes       TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS fuel_logs (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id    INTEGER NOT NULL,
+    date          TEXT    NOT NULL,
+    gallons       REAL    NOT NULL,
+    price_per_gal REAL    NOT NULL DEFAULT 0,
+    mileage       INTEGER NOT NULL,
+    notes         TEXT,
+    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS wishlist (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    name        TEXT    NOT NULL,
+    category    TEXT    NOT NULL DEFAULT 'Other',
+    price       REAL    NOT NULL DEFAULT 0,
+    priority    TEXT    NOT NULL DEFAULT 'Medium',
+    link        TEXT,
+    notes       TEXT,
+    done        INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS specs (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id   INTEGER NOT NULL UNIQUE,
+    hp_stock     REAL,
+    tq_stock     REAL,
+    hp_current   REAL,
+    tq_current   REAL,
+    transmission TEXT,
+    drive_type   TEXT,
+    springs      TEXT,
+    sway_bar_f   TEXT,
+    sway_bar_r   TEXT,
+    wheel_size_f TEXT,
+    wheel_size_r TEXT,
+    tire_size_f  TEXT,
+    tire_size_r  TEXT,
+    curb_weight  REAL,
+    notes        TEXT,
+    updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS track_days (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id  INTEGER NOT NULL,
+    date        TEXT    NOT NULL,
+    track       TEXT    NOT NULL,
+    event_type  TEXT    NOT NULL DEFAULT 'Track Day',
+    best_lap    TEXT,
+    conditions  TEXT    NOT NULL DEFAULT 'Dry',
+    notes       TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
 `);
 
 // Migrations — safe to run on existing DBs
 for (const sql of [
   "ALTER TABLE vehicles ADD COLUMN image TEXT",
   "ALTER TABLE vehicles ADD COLUMN vin TEXT",
+  "ALTER TABLE threads ADD COLUMN tag TEXT DEFAULT 'General'",
+  "ALTER TABLE comments ADD COLUMN likes INTEGER DEFAULT 0",
 ]) {
   try { db.exec(sql); } catch (e) {
     if (!e.message.includes("duplicate column")) console.error("Migration error:", e.message);

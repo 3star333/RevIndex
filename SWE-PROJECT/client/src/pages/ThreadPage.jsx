@@ -1,18 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import API_URL from "../api/config";
 
+const PAGE_SIZE = 10;
+const TAG_COLORS = {
+  "General": "#808080", "Build Log": "#000080", "Question": "#006400",
+  "For Sale": "#8B0000", "Tech": "#4B0082", "Help": "#CC2200", "Off Topic": "#8B4513",
+};
+
 export default function ThreadPage({ thread, onBack }) {
-  const [threadData, setThreadData] = useState(null);
-  const [comments, setComments]     = useState([]);
-  const [form, setForm]             = useState({ author: "", content: "" });
-  const [posting, setPosting]       = useState(false);
-  const [error, setError]           = useState("");
+  const [threadData,   setThreadData]   = useState(null);
+  const [comments,     setComments]     = useState([]);
+  const [form,         setForm]         = useState({ author: "", content: "" });
+  const [posting,      setPosting]      = useState(false);
+  const [error,        setError]        = useState("");
+  const [page,         setPage]         = useState(1);
+  const [editingId,    setEditingId]    = useState(null);
+  const [editContent,  setEditContent]  = useState("");
+  const replyRef = useRef(null);
 
   useEffect(() => {
     fetch(`${API_URL}/threads/${thread.id}`)
       .then(r => r.json()).then(setThreadData).catch(() => setThreadData(thread));
     fetchComments();
-  }, [thread.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [thread.id]); // eslint-disable-line
 
   async function fetchComments() {
     try {
@@ -25,8 +35,7 @@ export default function ThreadPage({ thread, onBack }) {
   async function handlePost(e) {
     e.preventDefault();
     if (!form.content.trim()) return setError("Reply cannot be empty.");
-    setError("");
-    setPosting(true);
+    setError(""); setPosting(true);
     try {
       const res  = await fetch(`${API_URL}/threads/${thread.id}/comments`, {
         method: "POST",
@@ -35,32 +44,93 @@ export default function ThreadPage({ thread, onBack }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setComments(prev => [...prev, data]);
+      const newComments = [...comments, data];
+      setComments(newComments);
       setForm(f => ({ ...f, content: "" }));
+      setPage(Math.ceil((newComments.length + 1) / PAGE_SIZE));
     } catch (err) { setError(err.message); }
     finally { setPosting(false); }
   }
 
+  async function handleDeleteThread() {
+    if (!confirm("Delete this entire thread and all its replies? Cannot be undone.")) return;
+    try {
+      await fetch(`${API_URL}/threads/${thread.id}`, { method: "DELETE" });
+      onBack();
+    } catch { setError("Failed to delete thread."); }
+  }
+
+  async function handleDeleteComment(cid) {
+    if (!confirm("Delete this reply?")) return;
+    try {
+      await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}`, { method: "DELETE" });
+      setComments(prev => prev.filter(c => c.id !== cid));
+    } catch { setError("Failed to delete reply."); }
+  }
+
+  async function handleLike(cid) {
+    try {
+      const res  = await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}/like`, { method: "POST" });
+      const data = await res.json();
+      setComments(prev => prev.map(c => c.id === cid ? { ...c, likes: data.likes } : c));
+    } catch { /* silent */ }
+  }
+
+  async function handleEditSave(cid) {
+    if (!editContent.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+      if (!res.ok) throw new Error();
+      setComments(prev => prev.map(c => c.id === cid ? { ...c, content: editContent } : c));
+      setEditingId(null);
+    } catch { setError("Failed to save edit."); }
+  }
+
+  function handleQuote(author, content) {
+    const quoted = content.split("\n").map(l => `> ${l}`).join("\n");
+    setForm(f => ({ ...f, content: `${quoted}\n\n` }));
+    replyRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => replyRef.current?.querySelector("textarea")?.focus(), 300);
+  }
+
   const t = threadData || thread;
-  const totalPosts = 1 + comments.length; // OP + replies
+  const allPosts = [
+    { id: "op", postNum: 1, author: "OP", date: t.created_at, content: t.description || "(No description provided.)", isOP: true },
+    ...comments.map((c, i) => ({ ...c, postNum: i + 2, isOP: false })),
+  ];
+  const totalPages = Math.max(1, Math.ceil(allPosts.length / PAGE_SIZE));
+  const pagePosts  = allPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "860px" }}>
 
-      {/* Breadcrumb nav */}
-      <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "12px" }}>
+      {/* Breadcrumb */}
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "12px", flexWrap: "wrap" }}>
         <button className="win-btn" onClick={onBack}>← The Garage</button>
         <span style={{ color: "#808080" }}>›</span>
-        <span style={{ fontWeight: "bold" }}>{t.title}</span>
+        <span style={{ fontWeight: "bold", flex: 1 }}>{t.title}</span>
+        {t.tag && (
+          <span style={{ background: TAG_COLORS[t.tag] || "#808080", color: "#fff", fontSize: "10px", padding: "2px 7px", fontWeight: "bold" }}>
+            {t.tag}
+          </span>
+        )}
+        <button className="win-btn"
+          style={{ background: "#8B0000", color: "#fff", minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
+          onClick={handleDeleteThread}>
+          🗑 Delete Thread
+        </button>
       </div>
 
       {/* Thread header */}
       <div className="win-panel" style={{ padding: 0 }}>
         <div className="win-title-bar" style={{ justifyContent: "space-between" }}>
           <span>🔧 {t.title}</span>
-          <span style={{ fontSize: "11px" }}>{totalPosts} post{totalPosts !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: "11px" }}>{allPosts.length} post{allPosts.length !== 1 ? "s" : ""}</span>
         </div>
-        {/* Vehicle info bar */}
         <div style={{ display: "flex", gap: "8px", alignItems: "center", padding: "6px 8px", background: "#000080", color: "#fff" }}>
           {t.vehicle_image ? (
             <img src={`${API_URL}${t.vehicle_image}`} alt=""
@@ -69,64 +139,51 @@ export default function ThreadPage({ thread, onBack }) {
             <div style={{ width: "48px", height: "48px", background: "#808080", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🚗</div>
           )}
           <div>
-            <div style={{ fontWeight: "bold", fontSize: "14px" }}>
-              {t.year} {t.make} {t.model}
-            </div>
+            <div style={{ fontWeight: "bold", fontSize: "14px" }}>{t.year} {t.make} {t.model}</div>
             {t.nickname && <div style={{ fontStyle: "italic", fontSize: "12px", opacity: 0.85 }}>&quot;{t.nickname}&quot;</div>}
           </div>
         </div>
       </div>
 
-      {/* OP post */}
-      <PostBox
-        postNum={1}
-        author="OP"
-        date={t.created_at}
-        content={t.description || "(No description provided.)"}
-        isOP
-      />
+      {error && (
+        <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px" }}>⚠ {error}</div>
+      )}
 
-      {/* Reply posts */}
-      {comments.map((c, i) => (
-        <PostBox
-          key={c.id}
-          postNum={i + 2}
-          author={c.author || "Anonymous"}
-          date={c.created_at}
-          content={c.content}
+      {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onPage={setPage} />}
+
+      {pagePosts.map(post => (
+        <PostBox key={post.id} post={post}
+          onQuote={() => handleQuote(post.author, post.content)}
+          onDelete={post.isOP ? null : () => handleDeleteComment(post.id)}
+          onLike={post.isOP ? null : () => handleLike(post.id)}
+          onEdit={post.isOP ? null : () => { setEditingId(post.id); setEditContent(post.content); }}
+          isEditing={editingId === post.id}
+          editContent={editContent}
+          onEditChange={setEditContent}
+          onEditSave={() => handleEditSave(post.id)}
+          onEditCancel={() => setEditingId(null)}
         />
       ))}
 
+      {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onPage={setPage} />}
+
       {/* Reply form */}
-      <div className="win-panel" style={{ padding: 0 }}>
+      <div className="win-panel" style={{ padding: 0 }} ref={replyRef}>
         <div className="win-title-bar"><span>📝 Post a Reply</span></div>
         <div style={{ padding: "10px" }}>
-          {error && (
-            <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px", marginBottom: "8px" }}>
-              ⚠ {error}
-            </div>
-          )}
           <form onSubmit={handlePost} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <div>
               <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Your Name (optional)</label>
-              <input
-                className="win-input"
-                placeholder="Anonymous"
-                value={form.author}
-                onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
-                style={{ width: "200px" }}
-              />
+              <input className="win-input" placeholder="Anonymous"
+                value={form.author} onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
+                style={{ width: "200px" }} />
             </div>
             <div>
               <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Reply *</label>
-              <textarea
-                className="win-input"
-                rows={5}
+              <textarea className="win-input" rows={5}
                 style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }}
                 placeholder="Type your reply here..."
-                value={form.content}
-                onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              />
+                value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
             </div>
             <div style={{ textAlign: "right" }}>
               <button type="submit" className="win-btn win-btn-primary" disabled={posting}>
@@ -140,66 +197,102 @@ export default function ThreadPage({ thread, onBack }) {
   );
 }
 
-function PostBox({ postNum, author, date, content, isOP }) {
+function Pagination({ page, totalPages, onPage }) {
+  return (
+    <div style={{ display: "flex", gap: "4px", alignItems: "center", justifyContent: "center", padding: "4px" }}>
+      <button className="win-btn" style={{ minWidth: "unset", padding: "2px 8px" }} disabled={page === 1} onClick={() => onPage(1)}>«</button>
+      <button className="win-btn" style={{ minWidth: "unset", padding: "2px 8px" }} disabled={page === 1} onClick={() => onPage(p => Math.max(1, p - 1))}>‹</button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+        <button key={p} className="win-btn"
+          style={{ minWidth: "unset", padding: "2px 8px", background: p === page ? "#000080" : "#C0C0C0", color: p === page ? "#fff" : "#000" }}
+          onClick={() => onPage(p)}>{p}</button>
+      ))}
+      <button className="win-btn" style={{ minWidth: "unset", padding: "2px 8px" }} disabled={page === totalPages} onClick={() => onPage(p => Math.min(totalPages, p + 1))}>›</button>
+      <button className="win-btn" style={{ minWidth: "unset", padding: "2px 8px" }} disabled={page === totalPages} onClick={() => onPage(totalPages)}>»</button>
+    </div>
+  );
+}
+
+function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editContent, onEditChange, onEditSave, onEditCancel }) {
+  const { postNum, author, date, content, isOP, likes } = post;
   const formattedDate = date ? new Date(date).toLocaleString() : "";
+
   return (
     <div className="win-panel" style={{ padding: 0 }}>
-      {/* Post header row */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "120px 1fr",
-        minHeight: "80px",
-        borderTop: postNum > 1 ? "2px solid #808080" : undefined,
-      }}>
-        {/* Left: user info */}
+      <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", minHeight: "80px" }}>
+
+        {/* Left: user card */}
         <div style={{
-          borderRight: "2px solid #808080",
-          padding: "8px",
-          background: isOP ? "#000080" : "#808080",
-          color: "#fff",
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          paddingTop: "10px",
+          borderRight: "2px solid #808080", padding: "10px 8px",
+          background: isOP ? "#000080" : "#404040", color: "#fff",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
         }}>
-          {/* Avatar */}
-          <div style={{
-            width: "44px", height: "44px", background: "#C0C0C0",
-            border: "2px outset #fff", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: "22px",
-          }}>
+          <div style={{ width: "44px", height: "44px", background: "#C0C0C0", border: "2px outset #fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
             {isOP ? "👤" : "💬"}
           </div>
-          <div style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", wordBreak: "break-all" }}>
-            {author}
-          </div>
+          <div style={{ fontWeight: "bold", fontSize: "11px", textAlign: "center", wordBreak: "break-all" }}>{author}</div>
           {isOP && (
-            <div style={{ fontSize: "10px", background: "#FFD700", color: "#000", padding: "1px 4px", fontWeight: "bold" }}>
-              OP
-            </div>
+            <div style={{ fontSize: "10px", background: "#FFD700", color: "#000", padding: "1px 4px", fontWeight: "bold" }}>OP</div>
+          )}
+          <div style={{ fontSize: "10px", color: "#C0C0C0", marginTop: "2px" }}>Post #{postNum}</div>
+          {!isOP && likes > 0 && (
+            <div style={{ fontSize: "10px", color: "#FFD700", marginTop: "2px" }}>👍 {likes}</div>
           )}
         </div>
 
-        {/* Right: post content */}
+        {/* Right: content */}
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {/* Post meta bar */}
-          <div style={{
-            background: "#000080", color: "#fff",
-            display: "flex", justifyContent: "space-between",
-            padding: "2px 8px", fontSize: "11px",
-          }}>
-            <span>Post #{postNum}</span>
-            <span>{formattedDate}</span>
+          {/* Meta bar */}
+          <div style={{ background: "#000080", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 8px", fontSize: "11px" }}>
+            <span>#{postNum} — {formattedDate}</span>
+            <div style={{ display: "flex", gap: "3px" }}>
+              {!isOP && onLike && (
+                <button className="win-btn" style={{ minWidth: "unset", padding: "1px 6px", fontSize: "10px" }} onClick={onLike}>
+                  👍 {likes || 0}
+                </button>
+              )}
+              {onQuote && (
+                <button className="win-btn" style={{ minWidth: "unset", padding: "1px 6px", fontSize: "10px" }} onClick={onQuote}>
+                  💬 Quote
+                </button>
+              )}
+              {!isOP && onEdit && (
+                <button className="win-btn" style={{ minWidth: "unset", padding: "1px 6px", fontSize: "10px" }} onClick={onEdit}>
+                  ✏ Edit
+                </button>
+              )}
+              {!isOP && onDelete && (
+                <button className="win-btn" style={{ minWidth: "unset", padding: "1px 6px", fontSize: "10px", background: "#8B0000", color: "#fff" }} onClick={onDelete}>
+                  🗑
+                </button>
+              )}
+            </div>
           </div>
-          {/* Content */}
-          <div style={{
-            padding: "8px 10px", fontSize: "12px", lineHeight: "1.6",
-            whiteSpace: "pre-wrap", flex: 1,
-          }}>
-            {content}
-          </div>
+
+          {/* Body */}
+          {isEditing ? (
+            <div style={{ padding: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <textarea className="win-input" rows={4}
+                style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }}
+                value={editContent} onChange={e => onEditChange(e.target.value)} />
+              <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end" }}>
+                <button className="win-btn" style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px" }} onClick={onEditCancel}>Cancel</button>
+                <button className="win-btn win-btn-primary" style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px" }} onClick={onEditSave}>Save</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "8px 10px", fontSize: "12px", lineHeight: "1.7", flex: 1 }}>
+              {content.split("\n").map((line, i) =>
+                line.startsWith("> ") ? (
+                  <div key={i} style={{ borderLeft: "3px solid #808080", paddingLeft: "8px", color: "#555", fontStyle: "italic", marginBottom: "2px" }}>
+                    {line.slice(2)}
+                  </div>
+                ) : (
+                  <span key={i}>{line}<br /></span>
+                )
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

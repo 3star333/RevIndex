@@ -3,75 +3,110 @@ const router  = express.Router();
 const db      = require("../db/database");
 const { sanitizeString, isValidInt } = require("../models/validate");
 
+const VALID_TAGS  = ["General", "Build Log", "Question", "For Sale", "Tech", "Help", "Off Topic"];
+const VALID_SORTS = {
+  latest:  "t.created_at DESC",
+  replies: "reply_count DESC",
+  oldest:  "t.created_at ASC",
+};
+
 // ── GET /threads ──────────────────────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", (req, res) => {
   try {
-    const rows = await dbAll(`
+    const { sort = "latest", tag } = req.query;
+    const orderBy   = VALID_SORTS[sort] || VALID_SORTS.latest;
+    const tagFilter = tag && VALID_TAGS.includes(tag) ? tag : null;
+
+    const sql = `
       SELECT t.*,
-             v.make, v.model, v.year, v.image AS vehicle_image,
+             v.make, v.model, v.year, v.nickname, v.image AS vehicle_image,
              COUNT(c.id) AS reply_count,
              MAX(c.created_at) AS last_reply
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
       LEFT JOIN comments c ON c.thread_id = t.id
+      ${tagFilter ? "WHERE t.tag = ?" : ""}
       GROUP BY t.id
-      ORDER BY t.created_at DESC
-    `);
+      ORDER BY ${orderBy}
+    `;
+    const rows = tagFilter
+      ? db.prepare(sql).all(tagFilter)
+      : db.prepare(sql).all();
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── GET /threads/stats  (must be before /:id) ─────────────────────────────────
+router.get("/stats", (req, res) => {
+  try {
+    const { thread_count } = db.prepare("SELECT COUNT(*) AS thread_count FROM threads").get();
+    const { post_count }   = db.prepare("SELECT COUNT(*) AS post_count FROM comments").get();
+    res.json({ thread_count, post_count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── POST /threads ─────────────────────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", (req, res) => {
   const vehicle_id  = Number(req.body.vehicle_id);
   const title       = sanitizeString(req.body.title);
   const description = sanitizeString(req.body.description || "");
+  const tag         = VALID_TAGS.includes(req.body.tag) ? req.body.tag : "General";
 
   if (!isValidInt(vehicle_id, 1)) return res.status(400).json({ error: "vehicle_id required." });
   if (!title)                     return res.status(400).json({ error: "title required." });
 
   try {
-    const vRow = await dbGet("SELECT id FROM vehicles WHERE id = ?", [vehicle_id]);
+    const vRow = db.prepare("SELECT id FROM vehicles WHERE id = ?").get(vehicle_id);
     if (!vRow) return res.status(404).json({ error: "Vehicle not found." });
-    const result = await dbRun(
-      "INSERT INTO threads (vehicle_id, title, description) VALUES (?, ?, ?)",
-      [vehicle_id, title, description || null]
-    );
-    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, title, description: description || null });
+    const result = db.prepare(
+      "INSERT INTO threads (vehicle_id, title, description, tag) VALUES (?, ?, ?, ?)"
+    ).run(vehicle_id, title, description || null, tag);
+    res.status(201).json({ id: result.lastInsertRowid, vehicle_id, title, description: description || null, tag });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── GET /threads/:id ──────────────────────────────────────────────────────────
-router.get("/:id", async (req, res) => {
+router.get("/:id", (req, res) => {
   const id = Number(req.params.id);
   if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   try {
-    const thread = await dbGet(`
+    const thread = db.prepare(`
       SELECT t.*, v.make, v.model, v.year, v.nickname, v.image AS vehicle_image
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
       WHERE t.id = ?
-    `, [id]);
+    `).get(id);
     if (!thread) return res.status(404).json({ error: "Thread not found." });
     res.json(thread);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── GET /threads/:id/comments ─────────────────────────────────────────────────
-router.get("/:id/comments", async (req, res) => {
+// ── DELETE /threads/:id ───────────────────────────────────────────────────────
+router.delete("/:id", (req, res) => {
   const id = Number(req.params.id);
   if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
   try {
-    const rows = await dbAll(
-      "SELECT * FROM comments WHERE thread_id = ? ORDER BY created_at ASC",
-      [id]
-    );
+    db.prepare("DELETE FROM comments WHERE thread_id = ?").run(id);
+    const result = db.prepare("DELETE FROM threads WHERE id = ?").run(id);
+    if (result.changes === 0) return res.status(404).json({ error: "Thread not found." });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── GET /threads/:id/comments ─────────────────────────────────────────────────
+router.get("/:id/comments", (req, res) => {
+  const id = Number(req.params.id);
+  if (!isValidInt(id, 1)) return res.status(400).json({ error: "Invalid thread id." });
+  try {
+    const rows = db.prepare(
+      "SELECT * FROM comments WHERE thread_id = ? ORDER BY created_at ASC"
+    ).all(id);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── POST /threads/:id/comments ────────────────────────────────────────────────
-router.post("/:id/comments", async (req, res) => {
+router.post("/:id/comments", (req, res) => {
   const thread_id = Number(req.params.id);
   const author    = sanitizeString(req.body.author || "Anonymous");
   const content   = sanitizeString(req.body.content);
@@ -80,28 +115,54 @@ router.post("/:id/comments", async (req, res) => {
   if (!content)                  return res.status(400).json({ error: "content required." });
 
   try {
-    const tRow = await dbGet("SELECT id FROM threads WHERE id = ?", [thread_id]);
+    const tRow = db.prepare("SELECT id FROM threads WHERE id = ?").get(thread_id);
     if (!tRow) return res.status(404).json({ error: "Thread not found." });
-    const result = await dbRun(
-      "INSERT INTO comments (thread_id, author, content) VALUES (?, ?, ?)",
-      [thread_id, author || "Anonymous", content]
-    );
-    res.status(201).json({ id: result.lastInsertRowid, thread_id, author: author || "Anonymous", content });
+    const result = db.prepare(
+      "INSERT INTO comments (thread_id, author, content) VALUES (?, ?, ?)"
+    ).run(thread_id, author || "Anonymous", content);
+    res.status(201).json({
+      id: result.lastInsertRowid, thread_id,
+      author: author || "Anonymous", content,
+      likes: 0,
+      created_at: new Date().toISOString(),
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function dbAll(sql, p = []) {
-  try { return Promise.resolve(db.prepare(sql).all(p)); }
-  catch (e) { return Promise.reject(e); }
-}
-function dbGet(sql, p = []) {
-  try { return Promise.resolve(db.prepare(sql).get(p)); }
-  catch (e) { return Promise.reject(e); }
-}
-function dbRun(sql, p = []) {
-  try { return Promise.resolve(db.prepare(sql).run(p)); }
-  catch (e) { return Promise.reject(e); }
-}
+// ── PATCH /threads/:id/comments/:cid ─────────────────────────────────────────
+router.patch("/:id/comments/:cid", (req, res) => {
+  const cid     = Number(req.params.cid);
+  const content = sanitizeString(req.body.content);
+  if (!isValidInt(cid, 1)) return res.status(400).json({ error: "Invalid comment id." });
+  if (!content)            return res.status(400).json({ error: "content required." });
+  try {
+    const result = db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(content, cid);
+    if (result.changes === 0) return res.status(404).json({ error: "Comment not found." });
+    res.json({ ok: true, content });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DELETE /threads/:id/comments/:cid ────────────────────────────────────────
+router.delete("/:id/comments/:cid", (req, res) => {
+  const cid = Number(req.params.cid);
+  if (!isValidInt(cid, 1)) return res.status(400).json({ error: "Invalid comment id." });
+  try {
+    const result = db.prepare("DELETE FROM comments WHERE id = ?").run(cid);
+    if (result.changes === 0) return res.status(404).json({ error: "Comment not found." });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /threads/:id/comments/:cid/like ─────────────────────────────────────
+router.post("/:id/comments/:cid/like", (req, res) => {
+  const cid = Number(req.params.cid);
+  if (!isValidInt(cid, 1)) return res.status(400).json({ error: "Invalid comment id." });
+  try {
+    const result = db.prepare("UPDATE comments SET likes = likes + 1 WHERE id = ?").run(cid);
+    if (result.changes === 0) return res.status(404).json({ error: "Comment not found." });
+    const row = db.prepare("SELECT likes FROM comments WHERE id = ?").get(cid);
+    res.json({ ok: true, likes: row.likes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 module.exports = router;
