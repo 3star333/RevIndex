@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import API_URL from "../api/config";
 import { useAuth } from "../context/AuthContext";
+import { SMILIES, parseSmileyLine } from "../smilies";
 
 const PAGE_SIZE = 10;
 const TAG_COLORS = {
@@ -18,6 +19,7 @@ export default function ThreadPage({ thread, onBack }) {
   const [page,         setPage]         = useState(1);
   const [editingId,    setEditingId]    = useState(null);
   const [editContent,  setEditContent]  = useState("");
+  const [showSmilies,  setShowSmilies]  = useState(false);
   const replyRef = useRef(null);
 
   useEffect(() => {
@@ -186,6 +188,37 @@ export default function ThreadPage({ thread, onBack }) {
                   value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <div style={{ position: "relative" }}>
+                  <button type="button" className="win-btn"
+                    style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
+                    onClick={() => setShowSmilies(s => !s)}>
+                    😊 Smilies
+                  </button>
+                  {showSmilies && (
+                    <div style={{
+                      position: "absolute", bottom: "calc(100% + 4px)", left: 0,
+                      background: "#C0C0C0", border: "2px outset #fff",
+                      boxShadow: "2px 2px 0 #000",
+                      display: "grid", gridTemplateColumns: "repeat(8, 28px)",
+                      gap: "2px", padding: "6px", zIndex: 100,
+                      maxHeight: "200px", overflowY: "auto", width: "248px",
+                    }}>
+                      {SMILIES.map(s => (
+                        <button key={s.code} type="button" title={s.code}
+                          style={{ width: "28px", height: "28px", background: "none", border: "1px solid transparent",
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = "#000080"}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}
+                          onClick={() => {
+                            setForm(f => ({ ...f, content: f.content + s.code }));
+                            setShowSmilies(false);
+                          }}>
+                          <img src={`${API_URL}/smilies/${s.file}`} alt={s.alt} style={{ width: "20px", height: "20px" }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button type="button" className="win-btn"
                   style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
                   onClick={() => {
@@ -263,11 +296,11 @@ function PostBox({ post, onQuote, onDelete, onLike, onEdit, isEditing, editConte
       if (line.startsWith("> ")) {
         return (
           <div key={i} style={{ borderLeft: "3px solid #808080", paddingLeft: "8px", color: "#555", fontStyle: "italic", marginBottom: "2px" }}>
-            {line.slice(2)}
+            {parseSmileyLine(line.slice(2), `q${i}`)}
           </div>
         );
       }
-      return <span key={i}>{line}<br /></span>;
+      return <span key={i}>{parseSmileyLine(line, `l${i}`)}<br /></span>;
     });
   }
 

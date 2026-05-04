@@ -31,13 +31,11 @@ export default function LeftSidebar({ onNavigate }) {
           <span>🚗</span> RevIndex
         </div>
         <div style={{ padding: "8px", fontSize: "11px", lineHeight: 1.6, background: "#fff", borderTop: "1px solid #808080" }}>
-          <div style={{ textAlign: "center", marginBottom: "6px" }}>
-            <img
-              src="https://media.giphy.com/media/Gl3tttV8foSWk/giphy.gif"
-              alt="car"
-              style={{ width: "80px" }}
-              onError={e => { e.target.style.display = "none"; }}
-            />
+          <div style={{ textAlign: "center", marginBottom: "6px", display: "flex", justifyContent: "center", gap: "4px" }}>
+            <img src={`${API_URL}/smilies/icon_cool.svg`}   alt="cool"  style={{ width: "28px", height: "28px" }} />
+            <img src={`${API_URL}/smilies/icon_thumbup.svg`} alt="+1"   style={{ width: "28px", height: "28px" }} />
+            <img src={`${API_URL}/smilies/icon_e_biggrin.svg`} alt="grin" style={{ width: "28px", height: "28px" }} />
+            <img src={`${API_URL}/smilies/icon_clap.svg`}   alt="clap"  style={{ width: "28px", height: "28px" }} />
           </div>
           <div style={{ textAlign: "center", fontSize: "10px", color: "#808080" }}>
             Est. 2025 — For car people,<br />by car people.

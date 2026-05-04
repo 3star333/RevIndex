@@ -107,12 +107,11 @@ export default function RightSidebar({ onOpenThread }) {
 
       {/* ── Retro decoration ── */}
       <div style={{ textAlign: "center", fontSize: "10px", color: "#808080", lineHeight: 1.8 }}>
-        <img
-          src="https://media.giphy.com/media/3oEdv5e5Zd2gsczAFG/giphy.gif"
-          alt=""
-          style={{ width: "88px", marginBottom: "4px" }}
-          onError={e => { e.target.style.display = "none"; }}
-        />
+        <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
+          {["icon_wtf.svg","icon_crazy.svg","icon_twisted.svg","icon_evil.svg"].map(f => (
+            <img key={f} src={`${API_URL}/smilies/${f}`} alt="" style={{ width: "24px", height: "24px" }} />
+          ))}
+        </div>
         <div>🔧 Site Under</div>
         <div>Development 🔧</div>
         <div style={{ marginTop: "4px" }}>Best viewed in</div>

@@ -2,20 +2,28 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import API_URL from "../api/config";
 
-// ── Preset retro GIF picker items ──────────────────────────────────────────
+// ── Preset profile GIFs ─────────────────────────────────────────────────────
+// Only using self-hosted smilies + a few known-reliable external GIFs
+const sm = (f) => `${API_URL}/smilies/${f}`;
+
 const PRESET_GIFS = [
-  { label: "🚧 Construction", url: "https://media.giphy.com/media/3oEdv5e5Zd2gsczAFG/giphy.gif" },
-  { label: "🔥 Fire",         url: "https://media.giphy.com/media/xT9IgG50Lg7russbDa/giphy.gif" },
-  { label: "🌍 Globe",        url: "https://media.giphy.com/media/3o7abAHdYvZdBNnGZq/giphy.gif" },
-  { label: "🚗 Racing",       url: "https://media.giphy.com/media/l0HlGqq7IQVXPG8Xm/giphy.gif" },
-  { label: "⭐ Stars",        url: "https://media.giphy.com/media/26BRuo6sLetdllPAQ/giphy.gif" },
-  { label: "💥 Explosion",    url: "https://media.giphy.com/media/oe33xf3B50fsc/giphy.gif" },
-  { label: "😎 Cool",         url: "https://media.giphy.com/media/3o6nUMESFJdAgFSJnW/giphy.gif" },
-  { label: "👍 Thumbs Up",    url: "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif" },
-  { label: "🏎️ Turbo",        url: "https://media.giphy.com/media/Gl3tttV8foSWk/giphy.gif" },
-  { label: "🌈 Rainbow",      url: "https://media.giphy.com/media/26BkMBCHBXMqI0jNS/giphy.gif" },
-  { label: "⚡ Lightning",    url: "https://media.giphy.com/media/xUPGcEliCc7bETyfO8/giphy.gif" },
-  { label: "🎉 Party",        url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" },
+  // Self-hosted SVGs (always available)
+  { label: "� Smile",     url: sm("icon_e_smile.svg")     },
+  { label: "😎 Cool",      url: sm("icon_cool.svg")         },
+  { label: "� LOL",       url: sm("icon_lol.svg")          },
+  { label: "👍 Thumbs Up", url: sm("icon_thumbup.svg")      },
+  { label: "🤔 Think",     url: sm("icon_think.svg")        },
+  { label: "� Evil",      url: sm("icon_evil.svg")         },
+  { label: "🤪 Crazy",     url: sm("icon_crazy.svg")        },
+  { label: "👼 Angel",     url: sm("icon_angel.svg")        },
+  { label: "� Clap",      url: sm("icon_clap.svg")         },
+  { label: "� Mad",       url: sm("icon_mad.svg")          },
+  { label: "🤫 Shh",       url: sm("icon_shh.svg")          },
+  { label: "🙄 Rolleyes",  url: sm("icon_rolleyes.svg")     },
+  // Reliable Tenor-hosted GIFs
+  { label: "🔥 Fire",      url: "https://media.tenor.com/images/d3b3e30e4651a8b36f2f5d396a57b56f/tenor.gif" },
+  { label: "🚗 Racing",    url: "https://media.tenor.com/images/da6f56fce80cd8df3484c4d0b40b41d4/tenor.gif" },
+  { label: "⭐ Stars",     url: "https://media.tenor.com/images/47ffd7e2e44fe31cf3e36ab7a1bd6dc7/tenor.gif" },
 ];
 
 export default function ProfilePage({ onClose }) {
