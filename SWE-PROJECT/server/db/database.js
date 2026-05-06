@@ -4,7 +4,7 @@ const fs   = require("fs");
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "carlog.db");
 
-// Ensure the directory exists before opening (needed when DB_PATH points to a volume)
+// Ensure the directory exists before opening the DB (needed for Railway volumes)
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
