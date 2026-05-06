@@ -167,25 +167,31 @@ router.post("/:id/comments", optionalAuth, (req, res) => {
 });
 
 // ── PATCH /threads/:id/comments/:cid ─────────────────────────────────────────
-router.patch("/:id/comments/:cid", (req, res) => {
+router.patch("/:id/comments/:cid", optionalAuth, (req, res) => {
   const cid     = Number(req.params.cid);
   const content = sanitizeString(req.body.content);
   if (!isValidInt(cid, 1)) return res.status(400).json({ error: "Invalid comment id." });
   if (!content)            return res.status(400).json({ error: "content required." });
   try {
-    const result = db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(content, cid);
-    if (result.changes === 0) return res.status(404).json({ error: "Comment not found." });
+    const row = db.prepare("SELECT user_id FROM comments WHERE id = ?").get(cid);
+    if (!row) return res.status(404).json({ error: "Comment not found." });
+    if (!req.user || req.user.id !== row.user_id)
+      return res.status(403).json({ error: "Not authorised." });
+    db.prepare("UPDATE comments SET content = ? WHERE id = ?").run(content, cid);
     res.json({ ok: true, content });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── DELETE /threads/:id/comments/:cid ────────────────────────────────────────
-router.delete("/:id/comments/:cid", (req, res) => {
+router.delete("/:id/comments/:cid", optionalAuth, (req, res) => {
   const cid = Number(req.params.cid);
   if (!isValidInt(cid, 1)) return res.status(400).json({ error: "Invalid comment id." });
   try {
-    const result = db.prepare("DELETE FROM comments WHERE id = ?").run(cid);
-    if (result.changes === 0) return res.status(404).json({ error: "Comment not found." });
+    const row = db.prepare("SELECT user_id FROM comments WHERE id = ?").get(cid);
+    if (!row) return res.status(404).json({ error: "Comment not found." });
+    if (!req.user || req.user.id !== row.user_id)
+      return res.status(403).json({ error: "Not authorised." });
+    db.prepare("DELETE FROM comments WHERE id = ?").run(cid);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

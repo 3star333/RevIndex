@@ -67,7 +67,10 @@ export default function ThreadPage({ thread, onBack }) {
   async function handleDeleteComment(cid) {
     if (!confirm("Delete this reply?")) return;
     try {
-      await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}`, { method: "DELETE" });
+      await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}`, {
+        method: "DELETE",
+        headers: { ...authHeader() },
+      });
       setComments(prev => prev.filter(c => c.id !== cid));
     } catch { setError("Failed to delete reply."); }
   }
@@ -85,7 +88,7 @@ export default function ThreadPage({ thread, onBack }) {
     try {
       const res = await fetch(`${API_URL}/threads/${thread.id}/comments/${cid}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({ content: editContent }),
       });
       if (!res.ok) throw new Error();
@@ -122,11 +125,13 @@ export default function ThreadPage({ thread, onBack }) {
             {t.tag}
           </span>
         )}
-        <button className="win-btn"
-          style={{ background: "#8B0000", color: "#fff", minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
-          onClick={handleDeleteThread}>
-          🗑 Delete Thread
-        </button>
+        {user && t.user_id && user.id === t.user_id && (
+          <button className="win-btn"
+            style={{ background: "#8B0000", color: "#fff", minWidth: "unset", padding: "2px 8px", fontSize: "11px" }}
+            onClick={handleDeleteThread}>
+            🗑 Delete Thread
+          </button>
+        )}
       </div>
 
       {/* Thread header */}
@@ -158,9 +163,9 @@ export default function ThreadPage({ thread, onBack }) {
       {pagePosts.map(post => (
         <PostBox key={post.id} post={post}
           onQuote={() => handleQuote(post.author, post.content)}
-          onDelete={post.isOP ? null : () => handleDeleteComment(post.id)}
+          onDelete={post.isOP || !(user && post.user_id && user.id === post.user_id) ? null : () => handleDeleteComment(post.id)}
           onLike={post.isOP ? null : () => handleLike(post.id)}
-          onEdit={post.isOP ? null : () => { setEditingId(post.id); setEditContent(post.content); }}
+          onEdit={post.isOP || !(user && post.user_id && user.id === post.user_id) ? null : () => { setEditingId(post.id); setEditContent(post.content); }}
           isEditing={editingId === post.id}
           editContent={editContent}
           onEditChange={setEditContent}
