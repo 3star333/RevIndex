@@ -2,13 +2,10 @@ import { useState } from "react";
 import API_URL from "../api/config";
 
 export default function RegisterPage({ onGoLogin }) {
-  const [form,      setForm]      = useState({ username: "", email: "", password: "", confirm: "" });
-  const [error,     setError]     = useState("");
-  const [success,   setSuccess]   = useState(false);
-  const [verified,  setVerified]  = useState(false);
-  const [loading,   setLoading]   = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resendMsg, setResendMsg] = useState("");
+  const [form,    setForm]    = useState({ username: "", email: "", password: "", confirm: "" });
+  const [error,   setError]   = useState("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,7 +20,6 @@ export default function RegisterPage({ onGoLogin }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setVerified(!!data.verified);
       setSuccess(true);
     } catch (err) {
       setError(err.message);
@@ -32,58 +28,17 @@ export default function RegisterPage({ onGoLogin }) {
     }
   }
 
-  async function resendVerification() {
-    setResending(true);
-    setResendMsg("");
-    try {
-      const res = await fetch(`${API_URL}/api/auth/resend-verification`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email }),
-      });
-      const d = await res.json();
-      setResendMsg(res.ok ? d.message : d.error);
-    } catch {
-      setResendMsg("Failed to resend. Please try again.");
-    } finally {
-      setResending(false);
-    }
-  }
-
   if (success) return (
     <div style={{ maxWidth: "360px", margin: "0 auto" }}>
       <div className="win-panel" style={{ padding: 0 }}>
         <div className="win-title-bar"><span>✅</span><span style={{ flex: 1 }}>Registration Successful</span></div>
         <div style={{ padding: "20px", textAlign: "center" }}>
-          {verified ? (
-            <>
-              <div style={{ fontSize: "32px", marginBottom: "8px" }}>🎉</div>
-              <div style={{ fontWeight: "bold", marginBottom: "8px" }}>Account created!</div>
-              <div style={{ fontSize: "12px", color: "#808080", marginBottom: "16px" }}>
-                You can log in now.
-              </div>
-              <button className="win-btn win-btn-primary" onClick={onGoLogin}>[ Go to Login ]</button>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: "32px", marginBottom: "8px" }}>📧</div>
-              <div style={{ fontWeight: "bold", marginBottom: "8px" }}>Check your email!</div>
-              <div style={{ fontSize: "12px", color: "#808080", marginBottom: "16px" }}>
-                We sent a verification link to <strong>{form.email}</strong>.<br />
-                Click it to activate your account, then log in.
-              </div>
-              {resendMsg && (
-                <div style={{ fontSize: "11px", color: resendMsg.toLowerCase().includes("sent") ? "#008000" : "#FF0000", marginBottom: "10px" }}>
-                  {resendMsg}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
-                <button className="win-btn win-btn-primary" onClick={onGoLogin}>[ Go to Login ]</button>
-                <button className="win-btn" onClick={resendVerification} disabled={resending}>
-                  {resending ? "[ Sending... ]" : "[ Resend Email ]"}
-                </button>
-              </div>
-            </>
-          )}
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>🎉</div>
+          <div style={{ fontWeight: "bold", marginBottom: "8px" }}>Account created!</div>
+          <div style={{ fontSize: "12px", color: "#808080", marginBottom: "16px" }}>
+            You can log in now.
+          </div>
+          <button className="win-btn win-btn-primary" onClick={onGoLogin}>[ Go to Login ]</button>
         </div>
       </div>
     </div>

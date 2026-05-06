@@ -1,8 +1,6 @@
 const express   = require("express");
 const bcrypt    = require("bcryptjs");
 const jwt       = require("jsonwebtoken");
-const crypto    = require("crypto");
-const nodemailer = require("nodemailer");
 const multer    = require("multer");
 const path      = require("path");
 const fs        = require("fs");
@@ -32,37 +30,6 @@ const avatarUpload = multer({
   },
 });
 
-// ── Mailer setup ─────────────────────────────────────────────────────────────
-function getMailer() {
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    tls:    { rejectUnauthorized: false },
-  });
-}
-
-async function sendVerificationEmail(email, token) {
-  const url = `${process.env.APP_URL}/api/auth/verify-email?token=${token}`;
-  const mailer = getMailer();
-  await mailer.sendMail({
-    from:    process.env.EMAIL_FROM,
-    to:      email,
-    subject: "RevIndex — Verify your email",
-    html: `
-      <div style="font-family:monospace;background:#C0C0C0;padding:16px;border:3px outset #fff">
-        <div style="background:#000080;color:#fff;padding:4px 8px;font-weight:bold">RevIndex — Email Verification</div>
-        <div style="padding:12px">
-          <p>Click the link below to verify your email address:</p>
-          <a href="${url}" style="background:#000080;color:#fff;padding:4px 12px;text-decoration:none;font-weight:bold">[VERIFY EMAIL]</a>
-          <p style="color:#808080;font-size:11px;margin-top:12px">Link expires in 24 hours.</p>
-        </div>
-      </div>
-    `,
-  });
-}
-
 // ── POST /auth/register ──────────────────────────────────────────────────────
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
@@ -77,76 +44,12 @@ router.post("/register", async (req, res) => {
   if (existing) return res.status(409).json({ error: "Username or email already taken" });
 
   const password_hash = await bcrypt.hash(password, 12);
-  const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 
-  // If SMTP isn't configured, auto-verify immediately
-  if (!smtpConfigured) {
-    db.prepare(
-      "INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, 1)"
-    ).run(username, email.toLowerCase(), password_hash);
-    return res.status(201).json({
-      message: "Account created! You can log in now.",
-      verified: true,
-    });
-  }
+  db.prepare(
+    "INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, 1)"
+  ).run(username, email.toLowerCase(), password_hash);
 
-  const verification_token = crypto.randomBytes(32).toString("hex");
-  const { lastInsertRowid } = db.prepare(
-    "INSERT INTO users (username, email, password_hash, verification_token) VALUES (?, ?, ?, ?)"
-  ).run(username, email.toLowerCase(), password_hash, verification_token);
-
-  try {
-    await sendVerificationEmail(email, verification_token);
-  } catch (err) {
-    console.error("Email send failed:", err.message);
-    // Auto-verify as fallback if email fails
-    db.prepare("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?").run(lastInsertRowid);
-    return res.status(201).json({
-      message: "Account created! (Email delivery failed — you can log in now.)",
-      verified: true,
-    });
-  }
-
-  res.status(201).json({
-    message: "Account created! Check your email to verify your account.",
-    userId: lastInsertRowid,
-    verified: false,
-  });
-});
-
-// ── POST /auth/resend-verification ───────────────────────────────────────────
-router.post("/resend-verification", async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email is required" });
-
-  const user = db.prepare("SELECT id, email_verified, verification_token FROM users WHERE email = ?").get(email.toLowerCase());
-  if (!user) return res.status(200).json({ message: "If that email exists, a link was sent." }); // don't leak existence
-  if (user.email_verified) return res.status(400).json({ error: "This account is already verified." });
-
-  const token = crypto.randomBytes(32).toString("hex");
-  db.prepare("UPDATE users SET verification_token = ? WHERE id = ?").run(token, user.id);
-
-  try {
-    await sendVerificationEmail(email, token);
-    res.json({ message: "Verification email resent!" });
-  } catch (err) {
-    console.error("Resend failed:", err.message);
-    res.status(500).json({ error: "Failed to send email. Please try again later." });
-  }
-});
-
-// ── GET /auth/verify-email?token=xxx ────────────────────────────────────────
-router.get("/verify-email", (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(400).send("Missing token.");
-
-  const user = db.prepare("SELECT id FROM users WHERE verification_token = ?").get(token);
-  if (!user) return res.status(400).send("Invalid or expired verification link.");
-
-  db.prepare("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?").run(user.id);
-
-  // Redirect to frontend with success flag
-  res.redirect(`${process.env.APP_URL}/?verified=1`);
+  res.status(201).json({ message: "Account created! You can log in now.", verified: true });
 });
 
 // ── POST /auth/login ─────────────────────────────────────────────────────────
@@ -163,9 +66,6 @@ router.post("/login", async (req, res) => {
 
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ error: "Invalid username or password" });
-
-  if (!user.email_verified)
-    return res.status(403).json({ error: "Please verify your email before logging in." });
 
   const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
   // No expiry = lasts until localStorage cleared or logout
