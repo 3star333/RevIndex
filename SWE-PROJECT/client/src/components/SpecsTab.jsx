@@ -16,7 +16,7 @@ const SPEC_FIELDS = [
 
 const EMPTY = SPEC_FIELDS.reduce((o, f) => { o[f.key] = ""; return o; }, {});
 
-export default function SpecsTab({ vehicleId }) {
+export default function SpecsTab({ vehicleId, isOwner }) {
   const [specs,    setSpecs]    = useState(null);
   const [edit,     setEdit]     = useState(false);
   const [form,     setForm]     = useState(EMPTY);
@@ -111,9 +111,11 @@ export default function SpecsTab({ vehicleId }) {
                 </div>
               </div>
             ))}
+            {isOwner && (
             <div style={{ textAlign: "right" }}>
               <button type="submit" className="win-btn win-btn-primary">[ Save Specs ]</button>
             </div>
+            )}
           </form>
         </div>
       ) : (

@@ -28,7 +28,7 @@ function MiniBarChart({ data, valueKey, labelKey, color = "#000080", unit = "" }
   );
 }
 
-export default function PerformanceTab({ vehicleId }) {
+export default function PerformanceTab({ vehicleId, isOwner }) {
   const [runs,     setRuns]     = useState([]);
   const [tracks,   setTracks]   = useState([]);
   const [section,  setSection]  = useState("dyno"); // "dyno" | "track"
@@ -110,10 +110,12 @@ export default function PerformanceTab({ vehicleId }) {
           </button>
         ))}
         <div style={{ flex: 1 }} />
+        {isOwner && (
         <button className="win-btn" style={{ minWidth: "unset", padding: "3px 10px" }}
           onClick={() => setShowForm(f => !f)}>
           {showForm ? "[ Cancel ]" : "[ + Add ]"}
         </button>
+        )}
       </div>
 
       {error && <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px" }}>⚠ {error}</div>}
@@ -212,7 +214,7 @@ export default function PerformanceTab({ vehicleId }) {
                         <td>{r.quarter_mph ? `${r.quarter_mph} mph` : "—"}</td>
                         <td>{r.boost_psi ? `${r.boost_psi} psi` : "—"}</td>
                         <td style={{ fontSize: "11px", color: "#808080", fontStyle: "italic" }}>{r.notes || "—"}</td>
-                        <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => deleteRun(r.id)}>🗑</button></td>
+                        {isOwner && <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => deleteRun(r.id)}>🗑</button></td>}
                       </tr>
                     ))}
                   </tbody>
@@ -284,7 +286,7 @@ export default function PerformanceTab({ vehicleId }) {
                         <td style={{ fontWeight: "bold", color: "#000080", fontFamily: "Courier New" }}>{t.best_lap || "—"}</td>
                         <td>{t.conditions}</td>
                         <td style={{ fontSize: "11px", color: "#808080", fontStyle: "italic" }}>{t.notes || "—"}</td>
-                        <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => deleteTrack(t.id)}>🗑</button></td>
+                        {isOwner && <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => deleteTrack(t.id)}>🗑</button></td>}
                       </tr>
                     ))}
                   </tbody>

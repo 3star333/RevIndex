@@ -4,7 +4,7 @@ import API_URL from "../api/config";
 const PRIORITY_COLORS = { Low: "#808080", Medium: "#006400", High: "#000080", ASAP: "#8B0000" };
 const CATEGORIES = ["Engine", "Suspension", "Brakes", "Exhaust", "Wheels/Tires", "Interior", "Exterior", "Electronics", "Safety", "Other"];
 
-export default function WishlistTab({ vehicleId }) {
+export default function WishlistTab({ vehicleId, isOwner }) {
   const [items,    setItems]    = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error,    setError]    = useState("");
@@ -95,9 +95,11 @@ export default function WishlistTab({ vehicleId }) {
       </div>
 
       {/* Add button */}
+      {isOwner && (
       <div style={{ textAlign: "right" }}>
         <button className="win-btn" onClick={() => setShowForm(f => !f)}>{showForm ? "[ Cancel ]" : "[ + Add Part ]"}</button>
       </div>
+      )}
 
       {error && <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px" }}>⚠ {error}</div>}
 
@@ -178,7 +180,7 @@ export default function WishlistTab({ vehicleId }) {
                         {item.purchased ? "↩" : "✅"}
                       </button>
                     </td>
-                    <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(item.id)}>🗑</button></td>
+                    {isOwner && <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(item.id)}>🗑</button></td>}
                   </tr>
                 ))}
               </tbody>

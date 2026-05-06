@@ -39,7 +39,7 @@ function MpgBarChart({ data }) {
   );
 }
 
-export default function FuelTab({ vehicleId }) {
+export default function FuelTab({ vehicleId, isOwner }) {
   const [logs,     setLogs]     = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error,    setError]    = useState("");
@@ -107,9 +107,11 @@ export default function FuelTab({ vehicleId }) {
       )}
 
       {/* Add form */}
+      {isOwner && (
       <div style={{ textAlign: "right" }}>
         <button className="win-btn" onClick={() => setShowForm(f => !f)}>{showForm ? "[ Cancel ]" : "[ + Log Fill-Up ]"}</button>
       </div>
+      )}
 
       {error && <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px" }}>⚠ {error}</div>}
 
@@ -172,7 +174,7 @@ export default function FuelTab({ vehicleId }) {
                         {mpg ? `${mpg} mpg` : "—"}
                       </td>
                       <td style={{ fontSize: "11px", color: "#808080", fontStyle: "italic" }}>{l.notes || "—"}</td>
-                      <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(l.id)}>🗑</button></td>
+                      {isOwner && <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(l.id)}>🗑</button></td>}
                     </tr>
                   );
                 })}

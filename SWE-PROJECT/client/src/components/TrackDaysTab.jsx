@@ -4,7 +4,7 @@ import API_URL from "../api/config";
 const EVENT_TYPES = ["Track Day", "Autocross", "Drag", "Canyon Run", "Other"];
 const CONDITIONS   = ["Dry", "Wet", "Mixed", "Damp", "Cold", "Hot"];
 
-export default function TrackDaysTab({ vehicleId }) {
+export default function TrackDaysTab({ vehicleId, isOwner }) {
   const [days,     setDays]     = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error,    setError]    = useState("");
@@ -57,9 +57,11 @@ export default function TrackDaysTab({ vehicleId }) {
       )}
 
       {/* Add button */}
+      {isOwner && (
       <div style={{ textAlign: "right" }}>
         <button className="win-btn" onClick={() => setShowForm(f => !f)}>{showForm ? "[ Cancel ]" : "[ + Log Session ]"}</button>
       </div>
+      )}
 
       {error && <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontWeight: "bold", fontSize: "12px" }}>⚠ {error}</div>}
 
@@ -130,7 +132,7 @@ export default function TrackDaysTab({ vehicleId }) {
                         <ConditionBadge cond={day.conditions} />
                       </td>
                       <td style={{ fontSize: "11px", color: "#808080", fontStyle: "italic" }}>{day.notes || "—"}</td>
-                      <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(day.id)}>🗑</button></td>
+                      {isOwner && <td><button className="win-btn" style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }} onClick={() => handleDelete(day.id)}>🗑</button></td>}
                     </tr>
                   );
                 })}

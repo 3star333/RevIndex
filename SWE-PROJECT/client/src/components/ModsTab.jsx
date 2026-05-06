@@ -9,7 +9,7 @@ const CAT_ICON = {
   Lighting:"💡", Other:"📦"
 };
 
-export default function ModsTab({ vehicleId }) {
+export default function ModsTab({ vehicleId, isOwner }) {
   const [mods, setMods]           = useState([]);
   const [showForm, setShowForm]   = useState(false);
   const [error, setError]         = useState("");
@@ -85,9 +85,11 @@ export default function ModsTab({ vehicleId }) {
                 💰 Total: ${totalCost.toFixed(2)}
               </span>
             )}
-            <button className="win-btn" onClick={() => setShowForm(f => !f)}>
-              {showForm ? "[ Cancel ]" : "[ + Add Mod ]"}
-            </button>
+            {isOwner && (
+              <button className="win-btn" onClick={() => setShowForm(f => !f)}>
+                {showForm ? "[ Cancel ]" : "[ + Add Mod ]"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -152,7 +154,7 @@ export default function ModsTab({ vehicleId }) {
                 <span>{CAT_ICON[mod.category] ?? "📦"} {mod.category}</span>
                 <button
                   className="win-btn"
-                  style={{ minWidth: "auto", padding: "0 5px", fontSize: "10px", color: "#FF0000", fontWeight: "bold" }}
+                  style={{ minWidth: "auto", padding: "0 5px", fontSize: "10px", color: "#FF0000", fontWeight: "bold", display: isOwner ? undefined : "none" }}
                   onClick={() => handleDelete(mod.id)}
                 >✕</button>
               </div>

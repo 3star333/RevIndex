@@ -8,10 +8,13 @@ import FuelTab from "../components/FuelTab";
 import WishlistTab from "../components/WishlistTab";
 import SpecsTab from "../components/SpecsTab";
 import TrackDaysTab from "../components/TrackDaysTab";
+import { useAuth } from "../context/AuthContext";
 
 const TABS = ["Overview", "Photos", "Mods", "Maintenance", "Performance", "Fuel", "Wishlist", "Specs", "Track Days"];
 
 export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
+  const { user } = useAuth();
+  const isOwner = user && initialVehicle.user_id && user.id === initialVehicle.user_id;
   const [vehicle, setVehicle] = useState(initialVehicle);
   const [tab, setTab]         = useState("Overview");
   const [logs, setLogs]       = useState([]);
@@ -123,11 +126,18 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "0" }}>
           <div style={{ borderRight: "2px solid #808080", padding: "8px" }}>
-            <ImageUpload
-              vehicleId={vehicle.id}
-              currentImage={vehicle.image}
-              onUpload={(img) => setVehicle(v => ({ ...v, image: img }))}
-            />
+            {isOwner ? (
+              <ImageUpload
+                vehicleId={vehicle.id}
+                currentImage={vehicle.image}
+                onUpload={(img) => setVehicle(v => ({ ...v, image: img }))}
+              />
+            ) : (
+              vehicle.image
+                ? <img src={`${API_URL}${vehicle.image}`} alt="vehicle"
+                    style={{ width: "164px", height: "120px", objectFit: "cover", border: "2px inset #808080", display: "block" }} />
+                : <div style={{ width: "164px", height: "120px", background: "#808080", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px" }}>🚗</div>
+            )}
           </div>
           <div style={{ padding: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
             <div>
@@ -146,8 +156,8 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
         </div>
       </div>
 
-      {/* Tab strip */}
-      <div style={{ display: "flex", gap: "2px", borderBottom: "2px solid #808080" }}>
+      {/* Tab strip — wraps to 2 rows on narrow layouts */}
+      <div style={{ display: "flex", gap: "2px", flexWrap: "wrap", borderBottom: "2px solid #808080" }}>
         {TABS.map(t => (
           <button
             key={t}
@@ -181,14 +191,15 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
       )}
 
       {/* ── Photos ── */}
-      {tab === "Photos" && <PhotoGallery vehicleId={vehicle.id} />}
+      {tab === "Photos" && <PhotoGallery vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Mods ── */}
-      {tab === "Mods" && <ModsTab vehicleId={vehicle.id} />}
+      {tab === "Mods" && <ModsTab vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Maintenance ── */}
       {tab === "Maintenance" && (
         <>
+          {isOwner && (
           <div className="win-panel" style={{ padding: "0" }}>
             <div className="win-title-bar"><span>🔧</span><span>Add Maintenance Log</span></div>
             <div style={{ padding: "10px" }}>
@@ -228,18 +239,19 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
               </form>
             </div>
           </div>
+          )}
 
           <div className="win-panel" style={{ padding: "0" }}>
             <div className="win-title-bar"><span>🛠</span><span>Maintenance History ({logs.length} records)</span></div>
             {logs.length === 0 ? (
               <div style={{ padding: "24px", textAlign: "center", color: "#808080", fontSize: "12px" }}>
-                No logs yet. Add your first maintenance record above.
+                No logs yet.{isOwner ? " Add your first maintenance record above." : ""}
               </div>
             ) : (
               <div className="win-inset" style={{ overflow: "auto" }}>
                 <table className="win-table" style={{ width: "100%" }}>
                   <thead>
-                    <tr><th>Date</th><th>Service</th><th>Mileage</th><th>Cost</th><th>Notes</th><th>📷</th><th>🗑</th></tr>
+                    <tr><th>Date</th><th>Service</th><th>Mileage</th><th>Cost</th><th>Notes</th><th>📷</th>{isOwner && <th>🗑</th>}</tr>
                   </thead>
                   <tbody>
                     {logs.map(log => (
@@ -257,14 +269,14 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
                               onClick={() => toggleLogPhotos(log.id)}
                             >{expandedLogPhotos[log.id] ? "▲" : "📷"}</button>
                           </td>
-                          <td>
+                          {isOwner && <td>
                             <button
                               className="win-btn"
                               style={{ fontSize: "10px", padding: "1px 4px", minWidth: "auto", color: "#CC0000" }}
                               onClick={() => handleDeleteLog(log.id)}
                               title="Delete log entry"
                             >🗑</button>
-                          </td>
+                          </td>}
                         </tr>
                         {expandedLogPhotos[log.id] && (
                           <tr key={`${log.id}-photos`}>
@@ -274,17 +286,19 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
                                   <img key={p.id} src={`${API_URL}${p.path}`} alt="log"
                                     style={{ width: "60px", height: "60px", objectFit: "cover", border: "2px inset #808080" }} />
                                 ))}
-                                <input
-                                  ref={el => { logPhotoRefs.current[log.id] = el; }}
-                                  type="file" accept="image/*" style={{ display: "none" }}
-                                  onChange={e => handleLogPhotoUpload(e, log.id)}
-                                />
-                                <button
-                                  className="win-btn"
-                                  style={{ fontSize: "10px", padding: "1px 5px", minWidth: "auto" }}
-                                  disabled={uploadingLogPhoto === log.id}
-                                  onClick={() => logPhotoRefs.current[log.id]?.click()}
-                                >{uploadingLogPhoto === log.id ? "…" : "+ Photo"}</button>
+                                {isOwner && <>
+                                  <input
+                                    ref={el => { logPhotoRefs.current[log.id] = el; }}
+                                    type="file" accept="image/*" style={{ display: "none" }}
+                                    onChange={e => handleLogPhotoUpload(e, log.id)}
+                                  />
+                                  <button
+                                    className="win-btn"
+                                    style={{ fontSize: "10px", padding: "1px 5px", minWidth: "auto" }}
+                                    disabled={uploadingLogPhoto === log.id}
+                                    onClick={() => logPhotoRefs.current[log.id]?.click()}
+                                  >{uploadingLogPhoto === log.id ? "…" : "+ Photo"}</button>
+                                </>}
                               </div>
                             </td>
                           </tr>
@@ -300,19 +314,19 @@ export default function VehicleDetail({ vehicle: initialVehicle, onBack }) {
       )}
 
       {/* ── Performance ── */}
-      {tab === "Performance" && <PerformanceTab vehicleId={vehicle.id} />}
+      {tab === "Performance" && <PerformanceTab vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Fuel ── */}
-      {tab === "Fuel" && <FuelTab vehicleId={vehicle.id} />}
+      {tab === "Fuel" && <FuelTab vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Wishlist ── */}
-      {tab === "Wishlist" && <WishlistTab vehicleId={vehicle.id} />}
+      {tab === "Wishlist" && <WishlistTab vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Specs ── */}
-      {tab === "Specs" && <SpecsTab vehicleId={vehicle.id} />}
+      {tab === "Specs" && <SpecsTab vehicleId={vehicle.id} isOwner={isOwner} />}
 
       {/* ── Track Days ── */}
-      {tab === "Track Days" && <TrackDaysTab vehicleId={vehicle.id} />}
+      {tab === "Track Days" && <TrackDaysTab vehicleId={vehicle.id} isOwner={isOwner} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import API_URL from "../api/config";
 
-export default function PhotoGallery({ vehicleId }) {
+export default function PhotoGallery({ vehicleId, isOwner }) {
   const [photos, setPhotos]     = useState([]);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption]   = useState("");
@@ -55,29 +55,31 @@ export default function PhotoGallery({ vehicleId }) {
       <div style={{ padding: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
 
         {/* Upload strip */}
-        <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            style={{ display: "none" }}
-            onChange={handleUpload}
-          />
-          <input
-            className="win-input"
-            placeholder="Caption (optional)"
-            value={caption}
-            onChange={e => setCaption(e.target.value)}
-            style={{ flex: 1, minWidth: "120px" }}
-          />
-          <button
-            className="win-btn"
-            onClick={() => !uploading && fileRef.current.click()}
-            disabled={uploading}
-          >
-            {uploading ? "Uploading…" : "[ + Add Photo ]"}
-          </button>
-        </div>
+        {isOwner && (
+          <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: "none" }}
+              onChange={handleUpload}
+            />
+            <input
+              className="win-input"
+              placeholder="Caption (optional)"
+              value={caption}
+              onChange={e => setCaption(e.target.value)}
+              style={{ flex: 1, minWidth: "120px" }}
+            />
+            <button
+              className="win-btn"
+              onClick={() => !uploading && fileRef.current.click()}
+              disabled={uploading}
+            >
+              {uploading ? "Uploading…" : "[ + Add Photo ]"}
+            </button>
+          </div>
+        )}
 
         {error && (
           <div style={{ background: "#FF0000", color: "#fff", padding: "2px 6px", fontSize: "11px", fontWeight: "bold" }}>
@@ -127,8 +129,10 @@ export default function PhotoGallery({ vehicleId }) {
                   onClick={() => setLightbox(i => Math.max(0, i - 1))} disabled={lightbox === 0}>◄</button>
                 <button className="win-btn" style={{ minWidth: "auto", padding: "0 6px", fontSize: "11px" }}
                   onClick={() => setLightbox(i => Math.min(photos.length - 1, i + 1))} disabled={lightbox === photos.length - 1}>►</button>
-                <button className="win-btn" style={{ minWidth: "auto", padding: "0 6px", fontSize: "11px", color: "#FF0000", fontWeight: "bold" }}
-                  onClick={() => handleDelete(photos[lightbox].id)}>Del</button>
+                {isOwner && (
+                  <button className="win-btn" style={{ minWidth: "auto", padding: "0 6px", fontSize: "11px", color: "#FF0000", fontWeight: "bold" }}
+                    onClick={() => handleDelete(photos[lightbox].id)}>Del</button>
+                )}
                 <button className="win-btn" style={{ minWidth: "auto", padding: "0 6px", fontSize: "11px" }}
                   onClick={() => setLightbox(null)}>✕</button>
               </div>
