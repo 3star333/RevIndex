@@ -1,8 +1,16 @@
 require("dotenv").config({ path: require("path").join(__dirname, ".env") });
-const express = require("express");
-const cors    = require("cors");
-const path    = require("path");
-const fs      = require("fs");
+const express      = require("express");
+const cors         = require("cors");
+const path         = require("path");
+const fs           = require("fs");
+const helmet       = require("helmet");
+const rateLimit    = require("express-rate-limit");
+
+// ── Startup checks ────────────────────────────────────────────────────────────
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET environment variable is not set. Refusing to start.");
+  process.exit(1);
+}
 
 // Initialize DB (runs table creation on import)
 require("./db/database");
@@ -29,11 +37,62 @@ const PORT = process.env.PORT || 5000;
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+// ── Security headers (helmet) ─────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],   // React needs inline scripts
+      styleSrc:    ["'self'", "'unsafe-inline'"],
+      imgSrc:      ["'self'", "data:", "https:", "blob:"],  // allow external avatars/gifs
+      connectSrc:  ["'self'"],
+      fontSrc:     ["'self'"],
+      objectSrc:   ["'none'"],
+      frameSrc:    ["'self'", "https://www.youtube.com", "https://player.vimeo.com"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // needed for YouTube embeds
+}));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// Strict limit on auth endpoints (login/register) — prevents brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: "Too many attempts, please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API limiter
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  message: { error: "Too many requests, slow down." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth/login",    authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/",              apiLimiter);
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// In production the frontend is served from the same origin, so CORS is mainly
+// for local dev. CLIENT_ORIGIN can be a comma-separated list.
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+  .split(",").map(o => o.trim());
+
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  origin(origin, cb) {
+    // Allow requests with no origin (mobile apps, curl, same-origin)
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
   methods: ["GET", "POST", "DELETE", "PATCH", "PUT"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 };
 app.use(cors(corsOptions));
 
@@ -79,5 +138,6 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 // ── Start server ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
-  console.log(`CORS origin: ${corsOptions.origin}`);
+  console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
 });

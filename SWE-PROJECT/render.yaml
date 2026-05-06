@@ -1,16 +1,24 @@
-# render.yaml — Render.com deployment config for RevIndex backend
+# render.yaml — Render.com deployment config for RevIndex (monolith)
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
   - type: web
-    name: revindex-api
+    name: revindex
     runtime: node
-    rootDir: server
-    buildCommand: npm ci
-    startCommand: node server.js
+    buildCommand: npm run build
+    startCommand: node server/server.js
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: PORT
         value: 5000
+      - key: JWT_SECRET
+        generateValue: true        # Render auto-generates a secure secret
       - key: CLIENT_ORIGIN
-        sync: false   # Set this manually in Render dashboard to your Vercel URL
-    healthCheckPath: /
+        sync: false                # Set to your Render URL after first deploy
+      - key: APP_URL
+        sync: false                # Set to your Render URL after first deploy
+    disk:
+      name: revindex-db
+      mountPath: /data
+      sizeGB: 1                   # $1/month persistent disk — keeps SQLite alive

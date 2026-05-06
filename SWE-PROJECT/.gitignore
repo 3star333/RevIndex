@@ -17,6 +17,7 @@ server/uploads/*
 client/dist/
 server/public/*
 !server/public/.gitkeep
+!server/public/index.html
 
 # ── OS junk ───────────────────────────────────────────
 .DS_Store
