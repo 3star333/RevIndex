@@ -29,18 +29,14 @@ function markSeen(threadId) {
 
 export default function GaragePage({ onOpenThread }) {
   const { user, authHeader } = useAuth();
-  const [threads,      setThreads]      = useState([]);
-  const [myVehicles,   setMyVehicles]   = useState([]);
-  const [allVehicles,  setAllVehicles]  = useState([]);
-  const [stats,        setStats]        = useState({ thread_count: 0, post_count: 0 });
-  const [showForm,     setShowForm]     = useState(false);
-  const [showAddCar,   setShowAddCar]   = useState(false);
-  const [addCarForm,   setAddCarForm]   = useState({ make: "", model: "", year: "", nickname: "" });
-  const [addCarError,  setAddCarError]  = useState("");
-  const [error,        setError]        = useState("");
-  const [activeTag,    setActiveTag]    = useState("All");
-  const [sort,         setSort]         = useState("latest");
-  const [form,         setForm]         = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
+  const [threads,     setThreads]     = useState([]);
+  const [stats,       setStats]       = useState({ thread_count: 0, post_count: 0 });
+  const [showForm,    setShowForm]    = useState(false);
+  const [myVehicles,  setMyVehicles]  = useState([]);
+  const [error,       setError]       = useState("");
+  const [activeTag,   setActiveTag]   = useState("All");
+  const [sort,        setSort]        = useState("latest");
+  const [form,        setForm]        = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
 
   const fetchThreads = useCallback(async () => {
     try {
@@ -54,11 +50,10 @@ export default function GaragePage({ onOpenThread }) {
 
   useEffect(() => {
     fetchThreads();
-    fetch(`${API_URL}/vehicles`).then(r => r.json()).then(d => setAllVehicles(Array.isArray(d) ? d : [])).catch(() => {});
     fetch(`${API_URL}/threads/stats`).then(r => r.json()).then(setStats).catch(() => {});
   }, [fetchThreads]);
 
-  // Fetch the logged-in user's own vehicles separately
+  // Fetch the logged-in user's own vehicles (for New Thread dropdown)
   useEffect(() => {
     if (!user) { setMyVehicles([]); return; }
     fetch(`${API_URL}/vehicles/mine`, { headers: authHeader() })
@@ -86,28 +81,6 @@ export default function GaragePage({ onOpenThread }) {
     } catch (err) { setError(err.message); }
   }
 
-  async function handleAddVehicle(e) {
-    e.preventDefault();
-    setAddCarError("");
-    const { make, model, year, nickname } = addCarForm;
-    if (!make || !model || !year) return setAddCarError("Make, model, and year are required.");
-    try {
-      const res  = await fetch(`${API_URL}/vehicles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ make, model, year: Number(year), nickname }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAddCarForm({ make: "", model: "", year: "", nickname: "" });
-      setShowAddCar(false);
-      // Refresh my vehicles list
-      fetch(`${API_URL}/vehicles/mine`, { headers: authHeader() })
-        .then(r => r.json()).then(d => setMyVehicles(Array.isArray(d) ? d : [])).catch(() => {});
-      fetch(`${API_URL}/threads/stats`).then(r => r.json()).then(setStats).catch(() => {});
-    } catch (err) { setAddCarError(err.message); }
-  }
-
   function handleOpenThread(t) {
     markSeen(t.id);
     onOpenThread(t);
@@ -128,92 +101,21 @@ export default function GaragePage({ onOpenThread }) {
         <span style={{ opacity: 0.5 }}>|</span>
         <span>💬 <strong>{stats.post_count}</strong> Posts</span>
         <span style={{ opacity: 0.5 }}>|</span>
-        <span>🚗 <strong>{allVehicles.length}</strong> Vehicles Registered</span>
+        <span>🚗 <strong>{stats.vehicles ?? ""}</strong> Vehicles Registered</span>
         <div style={{ flex: 1 }} />
         <span className="blink" style={{ color: "#FFFF00", fontWeight: "bold" }}>★ THE GARAGE ★</span>
       </div>
-
-      {/* ── My Garage section (logged-in users only) ── */}
-      {user && (
-        <div className="win-panel" style={{ padding: 0 }}>
-          <div className="win-title-bar">
-            <span>🚗 My Garage — {user.username}</span>
-            <div style={{ display: "flex", gap: "4px" }}>
-              <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
-                onClick={() => { setShowAddCar(f => !f); setAddCarError(""); }}>
-                {showAddCar ? "[ Cancel ]" : "[ + Add Vehicle ]"}
-              </button>
-              <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
-                onClick={() => setShowForm(f => !f)}>
-                {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
-              </button>
-            </div>
-          </div>
-
-          {/* Add Vehicle inline form */}
-          {showAddCar && (
-            <div style={{ padding: "10px", borderBottom: "2px solid #808080", background: "#D4D0C8" }}>
-              <form onSubmit={handleAddVehicle} style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "flex-end" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Make *</label>
-                  <input className="win-input" style={{ width: "90px" }} placeholder="Toyota"
-                    value={addCarForm.make} onChange={e => setAddCarForm(f => ({ ...f, make: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Model *</label>
-                  <input className="win-input" style={{ width: "90px" }} placeholder="Supra"
-                    value={addCarForm.model} onChange={e => setAddCarForm(f => ({ ...f, model: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Year *</label>
-                  <input className="win-input" style={{ width: "60px" }} placeholder="1998" maxLength={4}
-                    value={addCarForm.year} onChange={e => setAddCarForm(f => ({ ...f, year: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Nickname</label>
-                  <input className="win-input" style={{ width: "100px" }} placeholder={`"The Beast"`}
-                    value={addCarForm.nickname} onChange={e => setAddCarForm(f => ({ ...f, nickname: e.target.value }))} />
-                </div>
-                <button type="submit" className="win-btn win-btn-primary" style={{ alignSelf: "flex-end" }}>
-                  [ Save ]
-                </button>
-                {addCarError && <span style={{ color: "#CC0000", fontSize: "11px", alignSelf: "flex-end" }}>⚠ {addCarError}</span>}
-              </form>
-            </div>
-          )}
-
-          {myVehicles.length === 0 ? (
-            <div style={{ padding: "12px 14px", fontSize: "12px", color: "#808080" }}>
-              No vehicles in your garage yet. Click <strong>[ + Add Vehicle ]</strong> to add your first car!
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", padding: "10px" }}>
-              {myVehicles.map(v => (
-                <div key={v.id} style={{
-                  background: "#fff", border: "2px inset #808080",
-                  padding: "6px 10px", minWidth: "140px", fontSize: "11px",
-                }}>
-                  {v.image ? (
-                    <img src={`${API_URL}${v.image}`} alt=""
-                      style={{ width: "100%", height: "60px", objectFit: "cover", border: "1px solid #808080", display: "block", marginBottom: "4px" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "60px", background: "#C0C0C0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", marginBottom: "4px" }}>🚗</div>
-                  )}
-                  <div style={{ fontWeight: "bold" }}>{v.year} {v.make}</div>
-                  <div>{v.model}</div>
-                  {v.nickname && <div style={{ fontStyle: "italic", color: "#808080" }}>&quot;{v.nickname}&quot;</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Board header + filter bar */}
       <div className="win-panel" style={{ padding: 0 }}>
         <div className="win-title-bar" style={{ justifyContent: "space-between" }}>
           <span>🔧 THE GARAGE — Build Threads &amp; Discussion</span>
-          {!user && (
+          {user ? (
+            <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
+              onClick={() => setShowForm(f => !f)}>
+              {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
+            </button>
+          ) : (
             <span style={{ fontSize: "11px", color: "#FFFF00", padding: "0 8px" }}>Login to post</span>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import API_URL from "../api/config";
 
@@ -94,11 +94,20 @@ export default function ProfilePage({ onClose }) {
     finally { setSaving(false); }
   }
 
+  const [myVehicles,  setMyVehicles]  = useState([]);
+
   const TABS = [
     { id: "profile",  label: "👤 Profile"  },
+    { id: "garage",   label: "🚗 My Garage" },
     { id: "flair",    label: "✨ Flair"    },
     { id: "password", label: "🔒 Password" },
   ];
+
+  useEffect(() => {
+    if (tab !== "garage") return;
+    fetch(`${API_URL}/vehicles/mine`, { headers: authHeader() })
+      .then(r => r.json()).then(d => setMyVehicles(Array.isArray(d) ? d : [])).catch(() => {});
+  }, [tab]); // eslint-disable-line
 
   return (
     <div style={{ maxWidth: "520px", margin: "0 auto" }}>
@@ -281,6 +290,35 @@ export default function ProfilePage({ onClose }) {
                 {saving ? "[ Saving... ]" : "[ Save Flair ]"}
               </button>
             </form>
+          )}
+
+          {/* ══ MY GARAGE TAB ══ */}
+          {tab === "garage" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {myVehicles.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px", color: "#808080", fontSize: "12px" }}>
+                  <div style={{ fontSize: "28px", marginBottom: "6px" }}>🚗</div>
+                  No vehicles yet. Go to the <strong>Garage</strong> tab to add one!
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px" }}>
+                  {myVehicles.map(v => (
+                    <div key={v.id} className="win-panel" style={{ padding: 0 }}>
+                      <div style={{ background: "#000", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                        {v.image
+                          ? <img src={`${API_URL}${v.image}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <span style={{ fontSize: "28px", opacity: 0.3 }}>🚗</span>}
+                      </div>
+                      <div style={{ padding: "4px 6px", fontSize: "11px", borderTop: "1px solid #808080" }}>
+                        <div style={{ fontWeight: "bold" }}>{v.year} {v.make}</div>
+                        <div>{v.model}</div>
+                        {v.nickname && <div style={{ fontStyle: "italic", color: "#808080" }}>&quot;{v.nickname}&quot;</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* ══ PASSWORD TAB ══ */}

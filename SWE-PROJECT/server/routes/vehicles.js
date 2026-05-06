@@ -33,7 +33,12 @@ const upload = multer({
 // ── GET /vehicles ─────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
-    const rows = await dbAll("SELECT * FROM vehicles ORDER BY id DESC");
+    const rows = await dbAll(`
+      SELECT v.*, u.username AS owner_username, u.avatar_url AS owner_avatar
+      FROM vehicles v
+      LEFT JOIN users u ON u.id = v.user_id
+      ORDER BY v.id DESC
+    `);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
