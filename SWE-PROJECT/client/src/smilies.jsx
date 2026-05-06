@@ -71,7 +71,7 @@ export function parseSmileyLine(text, keyPrefix = "") {
     parts.push(
       <img key={`${keyPrefix}-${m.index}`} src={src} alt={alt}
         title={m[0]}
-        style={{ width: "18px", height: "18px", verticalAlign: "middle", display: "inline" }} />
+        style={{ width: "18px", height: "18px", verticalAlign: "middle", display: "inline", imageRendering: "pixelated" }} />
     );
     last = m.index + m[0].length;
   }

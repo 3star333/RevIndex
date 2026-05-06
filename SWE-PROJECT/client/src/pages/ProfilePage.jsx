@@ -232,7 +232,7 @@ export default function ProfilePage({ onClose }) {
                         style={{ border: form.profile_gif === g.url ? "3px solid #FFD700" : "2px outset #808080",
                           background: "#000", padding: "2px", cursor: "pointer",
                           display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
-                        <img src={g.url} alt={g.label} style={{ width: "52px", height: "38px", objectFit: "cover" }}
+                        <img src={g.url} alt={g.label} style={{ width: "52px", height: "38px", objectFit: "cover", imageRendering: "pixelated" }}
                           onError={e => { e.target.style.display = "none"; }} />
                         <span style={{ fontSize: "9px", color: "#ccc", textAlign: "center", lineHeight: 1.1 }}>{g.label}</span>
                       </button>

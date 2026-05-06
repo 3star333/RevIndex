@@ -5,7 +5,6 @@ const RULES = [
   "Be respectful to all members.",
   "No spam or self-promotion.",
   "Keep threads on-topic.",
-  "No illegal mods discussion.",
   "Search before posting.",
   "Photos encouraged! 📷",
 ];
@@ -37,10 +36,10 @@ export default function LeftSidebar({ onNavigate }) {
         </div>
         <div style={{ padding: "8px", fontSize: "11px", lineHeight: 1.6, background: "#fff", borderTop: "1px solid #808080" }}>
           <div style={{ textAlign: "center", marginBottom: "6px", display: "flex", justifyContent: "center", gap: "4px" }}>
-            <img src="/smilies/icon_cool.svg"      alt="cool"  style={{ width: "28px", height: "28px" }} />
-            <img src="/smilies/icon_thumbup.svg"   alt="+1"    style={{ width: "28px", height: "28px" }} />
-            <img src="/smilies/icon_e_biggrin.svg" alt="grin"  style={{ width: "28px", height: "28px" }} />
-            <img src="/smilies/icon_clap.svg"      alt="clap"  style={{ width: "28px", height: "28px" }} />
+            <img src="/smilies/icon_cool.svg"      alt="cool"  style={{ width: "28px", height: "28px", imageRendering: "pixelated" }} />
+            <img src="/smilies/icon_thumbup.svg"   alt="+1"    style={{ width: "28px", height: "28px", imageRendering: "pixelated" }} />
+            <img src="/smilies/icon_e_biggrin.svg" alt="grin"  style={{ width: "28px", height: "28px", imageRendering: "pixelated" }} />
+            <img src="/smilies/icon_clap.svg"      alt="clap"  style={{ width: "28px", height: "28px", imageRendering: "pixelated" }} />
           </div>
           <div style={{ textAlign: "center", fontSize: "10px", color: "#808080" }}>
             Est. 2025 — For car people,<br />by car people.

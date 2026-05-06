@@ -213,7 +213,7 @@ export default function ThreadPage({ thread, onBack }) {
                             setForm(f => ({ ...f, content: f.content + s.code }));
                             setShowSmilies(false);
                           }}>
-                          <img src={`/smilies/${s.file}`} alt={s.alt} style={{ width: "20px", height: "20px" }} />
+                          <img src={`/smilies/${s.file}`} alt={s.alt} style={{ width: "20px", height: "20px", imageRendering: "pixelated" }} />
                         </button>
                       ))}
                     </div>
