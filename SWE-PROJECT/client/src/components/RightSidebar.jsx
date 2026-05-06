@@ -109,7 +109,7 @@ export default function RightSidebar({ onOpenThread }) {
       <div style={{ textAlign: "center", fontSize: "10px", color: "#808080", lineHeight: 1.8 }}>
         <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
           {["icon_wtf.svg","icon_crazy.svg","icon_twisted.svg","icon_evil.svg"].map(f => (
-            <img key={f} src={`${API_URL}/smilies/${f}`} alt="" style={{ width: "24px", height: "24px" }} />
+            <img key={f} src={`/smilies/${f}`} alt="" style={{ width: "24px", height: "24px" }} />
           ))}
         </div>
         <div>🔧 Site Under</div>

@@ -4,7 +4,7 @@ import API_URL from "../api/config";
 
 // ── Preset profile GIFs ─────────────────────────────────────────────────────
 // Only using self-hosted smilies + a few known-reliable external GIFs
-const sm = (f) => `${API_URL}/smilies/${f}`;
+const sm = (f) => `/smilies/${f}`;
 
 const PRESET_GIFS = [
   // Self-hosted SVGs (always available)

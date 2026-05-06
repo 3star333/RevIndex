@@ -1,8 +1,7 @@
 // All available phpBB smilies with their text codes and filenames.
 // These are self-hosted at /smilies/*.svg
 
-import API_URL from "./api/config";
-const S = (file) => `${API_URL}/smilies/${file}`;
+const S = (file) => `/smilies/${file}`;
 
 export const SMILIES = [
   { code: ":)",          file: "icon_e_smile.svg",    alt: "smile"     },
