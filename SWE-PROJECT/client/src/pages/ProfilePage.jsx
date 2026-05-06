@@ -35,11 +35,12 @@ export default function ProfilePage({ onClose }) {
     profile_gif: user?.profile_gif || "",
     signature:   user?.signature   || "",
   });
-  const [pwForm,  setPwForm]  = useState({ current_password: "", new_password: "", confirm: "" });
-  const [msg,     setMsg]     = useState("");
-  const [error,   setError]   = useState("");
-  const [saving,  setSaving]  = useState(false);
-  const [gifMode, setGifMode] = useState("preset"); // "preset" | "custom"
+  const [pwForm,     setPwForm]     = useState({ current_password: "", new_password: "", confirm: "" });
+  const [msg,        setMsg]        = useState("");
+  const [error,      setError]      = useState("");
+  const [saving,     setSaving]     = useState(false);
+  const [gifMode,    setGifMode]    = useState("preset"); // "preset" | "custom"
+  const [uploading,  setUploading]  = useState(false);
 
   async function saveProfile(e) {
     e.preventDefault(); setMsg(""); setError(""); setSaving(true);
@@ -55,6 +56,25 @@ export default function ProfilePage({ onClose }) {
       setMsg("Profile saved!");
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
+  }
+
+  async function uploadAvatar(file) {
+    setUploading(true); setMsg(""); setError("");
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res  = await fetch(`${API_URL}/api/auth/avatar`, {
+        method: "POST",
+        headers: authHeader(),
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setForm(f => ({ ...f, avatar_url: `${API_URL}${data.avatar_url}` }));
+      login(token, { ...user, avatar_url: `${API_URL}${data.avatar_url}` });
+      setMsg("Avatar uploaded!");
+    } catch (err) { setError(err.message); }
+    finally { setUploading(false); }
   }
 
   async function savePassword(e) {
@@ -130,7 +150,6 @@ export default function ProfilePage({ onClose }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: "bold", fontSize: "13px", color: "#FFD700" }}>{user?.username}</div>
-                  <div style={{ fontSize: "10px", color: "#C0C0C0" }}>{user?.email}</div>
                   <div style={{ fontSize: "11px", marginTop: "4px", fontStyle: "italic", color: "#ddd" }}>
                     {form.bio || <span style={{ opacity: 0.5 }}>No bio set.</span>}
                   </div>
@@ -143,11 +162,20 @@ export default function ProfilePage({ onClose }) {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Avatar URL</label>
+                <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Profile Picture</label>
+                {/* File upload */}
+                <div style={{ display: "flex", gap: "4px", marginBottom: "6px" }}>
+                  <label className="win-btn" style={{ cursor: "pointer", fontSize: "11px", padding: "2px 10px", minWidth: "unset" }}>
+                    {uploading ? "⏳ Uploading..." : "📁 Upload Image"}
+                    <input type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => e.target.files[0] && uploadAvatar(e.target.files[0])} />
+                  </label>
+                  <span style={{ fontSize: "10px", color: "#808080", alignSelf: "center" }}>max 2MB · or paste URL below</span>
+                </div>
                 <input className="win-input" placeholder="https://i.imgur.com/yourimage.gif"
                   style={{ width: "100%" }}
                   value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} />
-                <div style={{ fontSize: "10px", color: "#808080", marginTop: "2px" }}>GIFs welcome — paste any direct image link.</div>
+                <div style={{ fontSize: "10px", color: "#808080", marginTop: "2px" }}>GIFs & PNGs welcome.</div>
               </div>
 
               <div>

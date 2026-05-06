@@ -20,6 +20,7 @@ const fuelRoutes     = require("./routes/fuel");
 const wishlistRoutes = require("./routes/wishlist");
 const specsRoutes    = require("./routes/specs");
 const trackdayRoutes = require("./routes/trackdays");
+const adminRoutes    = require("./routes/admin");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -43,7 +44,6 @@ app.use(express.urlencoded({ extended: true }));
 // ── Static file serving for uploaded images ───────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/smilies", express.static(path.join(__dirname, "public", "smilies")));
-
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/vehicles", vehicleRoutes);
@@ -59,6 +59,7 @@ app.use("/fuel",     fuelRoutes);
 app.use("/wishlist", wishlistRoutes);
 app.use("/specs",    specsRoutes);
 app.use("/trackdays", trackdayRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/api", (req, res) => res.json({ message: "RevIndex API is running 🚗" }));
 

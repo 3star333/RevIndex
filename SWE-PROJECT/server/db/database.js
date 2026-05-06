@@ -196,6 +196,8 @@ for (const sql of [
   "ALTER TABLE comments ADD COLUMN user_id INTEGER REFERENCES users(id)",
   "ALTER TABLE users ADD COLUMN profile_gif TEXT",
   "ALTER TABLE users ADD COLUMN signature TEXT",
+  "ALTER TABLE users ADD COLUMN last_seen_at TEXT",
+  "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0",
 ]) {
   try { db.exec(sql); } catch (e) {
     if (!e.message.includes("duplicate column")) console.error("Migration error:", e.message);
@@ -214,6 +216,7 @@ if (!devUser) {
   console.log("Dev user created.");
 }
 const devId = db.prepare("SELECT id FROM users WHERE username = 'dev'").get().id;
+db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'dev'").run();
 db.prepare("UPDATE vehicles SET user_id = ? WHERE user_id IS NULL").run(devId);
 db.prepare("UPDATE threads  SET user_id = ? WHERE user_id IS NULL").run(devId);
 db.prepare("UPDATE comments SET user_id = ? WHERE user_id IS NULL").run(devId);

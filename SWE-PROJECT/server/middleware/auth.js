@@ -8,8 +8,10 @@ function requireAuth(req, res, next) {
   }
   try {
     const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
-    const user    = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature, email_verified FROM users WHERE id = ?").get(payload.userId);
+    const user    = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature, email_verified, is_admin FROM users WHERE id = ?").get(payload.userId);
     if (!user) return res.status(401).json({ error: "User not found" });
+    // Update last_seen_at (fire-and-forget)
+    db.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").run(user.id);
     req.user = user;
     next();
   } catch {
@@ -22,7 +24,8 @@ function optionalAuth(req, res, next) {
   if (header && header.startsWith("Bearer ")) {
     try {
       const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
-      req.user = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature FROM users WHERE id = ?").get(payload.userId);
+      req.user = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature, is_admin FROM users WHERE id = ?").get(payload.userId);
+      if (req.user) db.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").run(req.user.id);
     } catch { /* ignore */ }
   }
   next();

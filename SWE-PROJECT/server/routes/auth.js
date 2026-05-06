@@ -3,10 +3,34 @@ const bcrypt    = require("bcryptjs");
 const jwt       = require("jsonwebtoken");
 const crypto    = require("crypto");
 const nodemailer = require("nodemailer");
+const multer    = require("multer");
+const path      = require("path");
+const fs        = require("fs");
 const db        = require("../db/database");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
+
+// ── Avatar upload storage ─────────────────────────────────────────────────────
+const avatarStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    const dir = path.join(__dirname, "../uploads/avatars");
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `avatar_${req.user.id}_${Date.now()}${ext}`);
+  },
+});
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter(req, file, cb) {
+    if (!file.mimetype.startsWith("image/")) return cb(new Error("Images only"));
+    cb(null, true);
+  },
+});
 
 // ── Mailer setup ─────────────────────────────────────────────────────────────
 function getMailer() {
@@ -111,18 +135,19 @@ router.post("/login", async (req, res) => {
     user: {
       id:          user.id,
       username:    user.username,
-      email:       user.email,
       avatar_url:  user.avatar_url,
       bio:         user.bio,
       profile_gif: user.profile_gif,
       signature:   user.signature,
+      is_admin:    user.is_admin,
     },
   });
 });
 
 // ── GET /auth/me ─────────────────────────────────────────────────────────────
 router.get("/me", requireAuth, (req, res) => {
-  res.json(req.user);
+  const { email, ...publicUser } = req.user; // eslint-disable-line no-unused-vars
+  res.json(publicUser);
 });
 
 // ── PUT /auth/profile ─────────────────────────────────────────────────────────
@@ -130,8 +155,27 @@ router.put("/profile", requireAuth, async (req, res) => {
   const { bio, avatar_url, profile_gif, signature } = req.body;
   db.prepare("UPDATE users SET bio = ?, avatar_url = ?, profile_gif = ?, signature = ? WHERE id = ?")
     .run(bio || null, avatar_url || null, profile_gif || null, signature || null, req.user.id);
-  const updated = db.prepare("SELECT id, username, email, avatar_url, bio, profile_gif, signature FROM users WHERE id = ?").get(req.user.id);
+  const updated = db.prepare("SELECT id, username, avatar_url, bio, profile_gif, signature, is_admin FROM users WHERE id = ?").get(req.user.id);
   res.json(updated);
+});
+
+// ── POST /auth/avatar ─────────────────────────────────────────────────────────
+router.post("/avatar", requireAuth, (req, res, next) => {
+  avatarUpload.single("avatar")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const url = `/uploads/avatars/${req.file.filename}`;
+    db.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").run(url, req.user.id);
+    res.json({ avatar_url: url });
+  });
+});
+
+// ── GET /auth/active-count ────────────────────────────────────────────────────
+router.get("/active-count", (req, res) => {
+  const row = db.prepare(
+    "SELECT COUNT(*) AS count FROM users WHERE last_seen_at >= datetime('now', '-24 hours')"
+  ).get();
+  res.json({ active: row.count });
 });
 
 // ── PUT /auth/change-password ─────────────────────────────────────────────────

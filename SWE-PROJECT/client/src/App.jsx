@@ -8,6 +8,7 @@ import ThreadPage    from "./pages/ThreadPage";
 import LoginPage     from "./pages/LoginPage";
 import RegisterPage  from "./pages/RegisterPage";
 import ProfilePage   from "./pages/ProfilePage";
+import AdminPage     from "./pages/AdminPage";
 import LeftSidebar   from "./components/LeftSidebar";
 import RightSidebar  from "./components/RightSidebar";
 import { useAuth }   from "./context/AuthContext";
@@ -101,6 +102,12 @@ export default function App() {
               onClick={() => setAuthPage("profile")}>
               {user.username}
             </span>
+            {user.is_admin && (
+              <button className="win-btn" style={{ fontSize: "10px", padding: "1px 6px", background: "#800000", color: "#fff" }}
+                onClick={() => setAuthPage("admin")}>
+                🛠️ Admin
+              </button>
+            )}
             <button className="win-btn" style={{ fontSize: "10px", padding: "1px 6px" }} onClick={logout}>
               Logout
             </button>
@@ -148,6 +155,7 @@ export default function App() {
                 {authPage === "login"    ? "Login"
                   : authPage === "register" ? "Register"
                   : authPage === "profile"  ? "My Profile"
+                  : authPage === "admin"    ? "Admin — Site Analytics"
                   : selectedVehicle
                   ? `${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model} — Detail`
                   : selectedThread
@@ -166,6 +174,8 @@ export default function App() {
                 <RegisterPage onGoLogin={() => setAuthPage("login")} />
               ) : authPage === "profile" ? (
                 <ProfilePage onClose={() => setAuthPage(null)} />
+              ) : authPage === "admin" ? (
+                <AdminPage onClose={() => setAuthPage(null)} />
               ) : selectedVehicle ? (
                 <VehicleDetail vehicle={selectedVehicle} onBack={() => navigate("Garage")} />
               ) : page === "Forum" && selectedThread ? (

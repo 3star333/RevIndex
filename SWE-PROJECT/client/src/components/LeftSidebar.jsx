@@ -11,12 +11,17 @@ const RULES = [
 ];
 
 export default function LeftSidebar({ onNavigate }) {
-  const [stats, setStats] = useState(null);
+  const [stats,       setStats]       = useState(null);
+  const [activeToday, setActiveToday] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/threads/stats`)
       .then(r => r.json())
       .then(setStats)
+      .catch(() => {});
+    fetch(`${API_URL}/api/auth/active-count`)
+      .then(r => r.json())
+      .then(d => setActiveToday(d.active))
       .catch(() => {});
   }, []);
 
@@ -84,6 +89,11 @@ export default function LeftSidebar({ onNavigate }) {
           <div style={{ fontSize: "10px", color: "#808080", marginTop: "2px" }}>
             Members + Guests
           </div>
+          {activeToday !== null && (
+            <div style={{ marginTop: "4px", padding: "2px 4px", background: "#000080", color: "#FFD700", fontSize: "10px", textAlign: "center", fontWeight: "bold" }}>
+              👤 {activeToday} active today
+            </div>
+          )}
         </div>
       </div>
 
