@@ -15,22 +15,50 @@ import { useAuth }   from "./context/AuthContext";
 
 const NAV = ["Forum", "Garage"];
 
+// ── URL path ↔ app state mapping ─────────────────────────────────────────────
+function pathToState(pathname) {
+  if (pathname === "/garage")   return { page: "Garage",  authPage: null, selectedThread: null, selectedVehicle: null };
+  if (pathname === "/login")    return { page: "Forum",   authPage: "login",    selectedThread: null, selectedVehicle: null };
+  if (pathname === "/register") return { page: "Forum",   authPage: "register", selectedThread: null, selectedVehicle: null };
+  if (pathname === "/profile")  return { page: "Forum",   authPage: "profile",  selectedThread: null, selectedVehicle: null };
+  if (pathname === "/admin")    return { page: "Forum",   authPage: "admin",    selectedThread: null, selectedVehicle: null };
+  // /thread/:id and /vehicle/:id are resolved after data loads — fall back to Forum
+  return { page: "Forum", authPage: null, selectedThread: null, selectedVehicle: null };
+}
+
+function stateToPath(state) {
+  if (state.authPage)                                        return `/${state.authPage}`;
+  if (state.selectedVehicle)                                 return `/vehicle/${state.selectedVehicle.id}`;
+  if (state.selectedThread)                                  return `/thread/${state.selectedThread.id}`;
+  if (state.page === "Garage")                               return "/garage";
+  return "/";
+}
+
 export default function App() {
   const { user, logout, loading } = useAuth();
-  const [page,            setPage]            = useState("Forum");
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [selectedThread,  setSelectedThread]  = useState(null);
-  const [authPage,        setAuthPage]        = useState(null); // "login" | "register" | "profile" | null
 
-  // ── Push a history snapshot before any navigation ──────────────────────────
+  // ── Initialise state from the URL the user landed on ───────────────────────
+  const initial = pathToState(window.location.pathname);
+  const [page,            setPage]            = useState(initial.page);
+  const [selectedVehicle, setSelectedVehicle] = useState(initial.selectedVehicle);
+  const [selectedThread,  setSelectedThread]  = useState(initial.selectedThread);
+  const [authPage,        setAuthPage]        = useState(initial.authPage);
+
+  // ── Push a history snapshot + update the URL ───────────────────────────────
   function pushHistory(currentState) {
-    window.history.pushState(currentState, "");
+    const path = stateToPath(currentState);
+    window.history.pushState(currentState, "", path);
   }
 
-  // ── Restore state when browser Back is pressed ─────────────────────────────
+  // ── Restore state when browser Back/Forward is pressed ─────────────────────
   useEffect(() => {
     function onPop(e) {
-      if (!e.state) return;
+      if (!e.state) {
+        const s = pathToState(window.location.pathname);
+        setPage(s.page); setSelectedVehicle(s.selectedVehicle);
+        setSelectedThread(s.selectedThread); setAuthPage(s.authPage);
+        return;
+      }
       setPage(e.state.page ?? "Forum");
       setSelectedVehicle(e.state.selectedVehicle ?? null);
       setSelectedThread(e.state.selectedThread ?? null);
@@ -46,6 +74,8 @@ export default function App() {
     setSelectedThread(null);
     setAuthPage(null);
     setPage(dest);
+    const newPath = stateToPath({ page: dest, selectedVehicle: vehicle, selectedThread: null, authPage: null });
+    window.history.replaceState({ page: dest, selectedVehicle: vehicle, selectedThread: null, authPage: null }, "", newPath);
   }
 
   function openThread(thread) {
@@ -54,11 +84,13 @@ export default function App() {
     setPage("Forum");
     setSelectedVehicle(null);
     setAuthPage(null);
+    window.history.replaceState({ page: "Forum", selectedVehicle: null, selectedThread: thread, authPage: null }, "", `/thread/${thread.id}`);
   }
 
   function goAuthPage(target) {
     pushHistory({ page, selectedVehicle, selectedThread, authPage });
     setAuthPage(target);
+    window.history.replaceState({ page, selectedVehicle, selectedThread, authPage: target }, "", `/${target}`);
   }
 
   if (loading) return (
