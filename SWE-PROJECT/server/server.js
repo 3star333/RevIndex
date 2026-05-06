@@ -43,7 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ── Static file serving for uploaded images ───────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/smilies", express.static(path.join(__dirname, "public", "smilies")));
+app.use("/smilies", express.static(path.join(__dirname, "smilies")));
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/vehicles", vehicleRoutes);
