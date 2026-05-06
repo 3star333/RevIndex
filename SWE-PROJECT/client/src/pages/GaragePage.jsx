@@ -29,15 +29,18 @@ function markSeen(threadId) {
 
 export default function GaragePage({ onOpenThread }) {
   const { user, authHeader } = useAuth();
-  const [threads,     setThreads]     = useState([]);
-  const [myVehicles,  setMyVehicles]  = useState([]);
-  const [allVehicles, setAllVehicles] = useState([]);
-  const [stats,       setStats]       = useState({ thread_count: 0, post_count: 0 });
-  const [showForm,    setShowForm]    = useState(false);
-  const [error,       setError]       = useState("");
-  const [activeTag,   setActiveTag]   = useState("All");
-  const [sort,        setSort]        = useState("latest");
-  const [form,        setForm]        = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
+  const [threads,      setThreads]      = useState([]);
+  const [myVehicles,   setMyVehicles]   = useState([]);
+  const [allVehicles,  setAllVehicles]  = useState([]);
+  const [stats,        setStats]        = useState({ thread_count: 0, post_count: 0 });
+  const [showForm,     setShowForm]     = useState(false);
+  const [showAddCar,   setShowAddCar]   = useState(false);
+  const [addCarForm,   setAddCarForm]   = useState({ make: "", model: "", year: "", nickname: "" });
+  const [addCarError,  setAddCarError]  = useState("");
+  const [error,        setError]        = useState("");
+  const [activeTag,    setActiveTag]    = useState("All");
+  const [sort,         setSort]         = useState("latest");
+  const [form,         setForm]         = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
 
   const fetchThreads = useCallback(async () => {
     try {
@@ -83,6 +86,28 @@ export default function GaragePage({ onOpenThread }) {
     } catch (err) { setError(err.message); }
   }
 
+  async function handleAddVehicle(e) {
+    e.preventDefault();
+    setAddCarError("");
+    const { make, model, year, nickname } = addCarForm;
+    if (!make || !model || !year) return setAddCarError("Make, model, and year are required.");
+    try {
+      const res  = await fetch(`${API_URL}/vehicles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ make, model, year: Number(year), nickname }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAddCarForm({ make: "", model: "", year: "", nickname: "" });
+      setShowAddCar(false);
+      // Refresh my vehicles list
+      fetch(`${API_URL}/vehicles/mine`, { headers: authHeader() })
+        .then(r => r.json()).then(d => setMyVehicles(Array.isArray(d) ? d : [])).catch(() => {});
+      fetch(`${API_URL}/threads/stats`).then(r => r.json()).then(setStats).catch(() => {});
+    } catch (err) { setAddCarError(err.message); }
+  }
+
   function handleOpenThread(t) {
     markSeen(t.id);
     onOpenThread(t);
@@ -113,14 +138,53 @@ export default function GaragePage({ onOpenThread }) {
         <div className="win-panel" style={{ padding: 0 }}>
           <div className="win-title-bar">
             <span>🚗 My Garage — {user.username}</span>
-            <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
-              onClick={() => setShowForm(f => !f)}>
-              {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
-            </button>
+            <div style={{ display: "flex", gap: "4px" }}>
+              <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
+                onClick={() => { setShowAddCar(f => !f); setAddCarError(""); }}>
+                {showAddCar ? "[ Cancel ]" : "[ + Add Vehicle ]"}
+              </button>
+              <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
+                onClick={() => setShowForm(f => !f)}>
+                {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
+              </button>
+            </div>
           </div>
+
+          {/* Add Vehicle inline form */}
+          {showAddCar && (
+            <div style={{ padding: "10px", borderBottom: "2px solid #808080", background: "#D4D0C8" }}>
+              <form onSubmit={handleAddVehicle} style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "flex-end" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Make *</label>
+                  <input className="win-input" style={{ width: "90px" }} placeholder="Toyota"
+                    value={addCarForm.make} onChange={e => setAddCarForm(f => ({ ...f, make: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Model *</label>
+                  <input className="win-input" style={{ width: "90px" }} placeholder="Supra"
+                    value={addCarForm.model} onChange={e => setAddCarForm(f => ({ ...f, model: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Year *</label>
+                  <input className="win-input" style={{ width: "60px" }} placeholder="1998" maxLength={4}
+                    value={addCarForm.year} onChange={e => setAddCarForm(f => ({ ...f, year: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", marginBottom: "1px" }}>Nickname</label>
+                  <input className="win-input" style={{ width: "100px" }} placeholder={`"The Beast"`}
+                    value={addCarForm.nickname} onChange={e => setAddCarForm(f => ({ ...f, nickname: e.target.value }))} />
+                </div>
+                <button type="submit" className="win-btn win-btn-primary" style={{ alignSelf: "flex-end" }}>
+                  [ Save ]
+                </button>
+                {addCarError && <span style={{ color: "#CC0000", fontSize: "11px", alignSelf: "flex-end" }}>⚠ {addCarError}</span>}
+              </form>
+            </div>
+          )}
+
           {myVehicles.length === 0 ? (
             <div style={{ padding: "12px 14px", fontSize: "12px", color: "#808080" }}>
-              No vehicles in your garage yet. Add one from your profile!
+              No vehicles in your garage yet. Click <strong>[ + Add Vehicle ]</strong> to add your first car!
             </div>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", padding: "10px" }}>
@@ -272,15 +336,15 @@ export default function GaragePage({ onOpenThread }) {
                       <div style={{ fontSize: "11px", color: "#808080" }}>
                         {t.year} {t.make} {t.model}{t.nickname ? ` "${t.nickname}"` : ""}
                       </div>
-                      {/* Author — avatar + username */}
-                      {t.author_username && (
+                      {/* Vehicle owner — avatar + username */}
+                      {(t.owner_username || t.author_username) && (
                         <div style={{ fontSize: "10px", color: "#4B0082", display: "flex", alignItems: "center", gap: "3px", marginTop: "2px" }}>
                           <div style={{ width: "16px", height: "16px", border: "1px solid #808080", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#C0C0C0", flexShrink: 0 }}>
-                            {t.author_avatar
-                              ? <img src={`${API_URL}${t.author_avatar}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            {(t.owner_avatar || t.author_avatar)
+                              ? <img src={`${API_URL}${t.owner_avatar || t.author_avatar}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                               : <span style={{ fontSize: "10px" }}>👤</span>}
                           </div>
-                          <span style={{ fontWeight: "bold" }}>{t.author_username}</span>
+                          <span style={{ fontWeight: "bold" }}>{t.owner_username || t.author_username}</span>
                         </div>
                       )}
                     </td>

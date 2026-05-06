@@ -54,7 +54,7 @@ router.get("/mine", requireAuth, async (req, res) => {
 });
 
 // ── POST /vehicles ────────────────────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const make     = sanitizeString(req.body.make);
   const model    = sanitizeString(req.body.model);
   const year     = Number(req.body.year);
@@ -73,10 +73,10 @@ router.post("/", async (req, res) => {
 
   try {
     const result = await dbRun(
-      "INSERT INTO vehicles (make, model, year, nickname, vin) VALUES (?, ?, ?, ?, ?)",
-      [make, model, year, nickname || null, vin || null]
+      "INSERT INTO vehicles (user_id, make, model, year, nickname, vin) VALUES (?, ?, ?, ?, ?, ?)",
+      [req.user.id, make, model, year, nickname || null, vin || null]
     );
-    res.status(201).json({ id: result.lastInsertRowid, make, model, year, nickname: nickname || null, vin: vin || null });
+    res.status(201).json({ id: result.lastInsertRowid, user_id: req.user.id, make, model, year, nickname: nickname || null, vin: vin || null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

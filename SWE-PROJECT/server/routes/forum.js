@@ -40,11 +40,13 @@ router.get("/", (req, res) => {
       SELECT t.*,
              v.make, v.model, v.year, v.nickname, v.image AS vehicle_image,
              u.username AS author_username, u.avatar_url AS author_avatar,
+             vu.username AS owner_username, vu.avatar_url AS owner_avatar,
              COUNT(c.id) AS reply_count,
              MAX(c.created_at) AS last_reply
       FROM threads t
       JOIN vehicles v ON v.id = t.vehicle_id
-      LEFT JOIN users u ON u.id = t.user_id
+      LEFT JOIN users u  ON u.id  = t.user_id
+      LEFT JOIN users vu ON vu.id = v.user_id
       LEFT JOIN comments c ON c.thread_id = t.id
       ${tagFilter ? "WHERE t.tag = ?" : ""}
       GROUP BY t.id

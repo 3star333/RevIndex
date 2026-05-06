@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MarqueeLib from "react-fast-marquee";
 const Marquee = MarqueeLib.default ?? MarqueeLib;
 import VehiclesPage  from "./pages/VehiclesPage";
@@ -22,7 +22,26 @@ export default function App() {
   const [selectedThread,  setSelectedThread]  = useState(null);
   const [authPage,        setAuthPage]        = useState(null); // "login" | "register" | "profile" | null
 
+  // ── Push a history snapshot before any navigation ──────────────────────────
+  function pushHistory(currentState) {
+    window.history.pushState(currentState, "");
+  }
+
+  // ── Restore state when browser Back is pressed ─────────────────────────────
+  useEffect(() => {
+    function onPop(e) {
+      if (!e.state) return;
+      setPage(e.state.page ?? "Forum");
+      setSelectedVehicle(e.state.selectedVehicle ?? null);
+      setSelectedThread(e.state.selectedThread ?? null);
+      setAuthPage(e.state.authPage ?? null);
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   function navigate(dest, vehicle = null) {
+    pushHistory({ page, selectedVehicle, selectedThread, authPage });
     setSelectedVehicle(vehicle);
     setSelectedThread(null);
     setAuthPage(null);
@@ -30,10 +49,16 @@ export default function App() {
   }
 
   function openThread(thread) {
+    pushHistory({ page, selectedVehicle, selectedThread, authPage });
     setSelectedThread(thread);
     setPage("Forum");
     setSelectedVehicle(null);
     setAuthPage(null);
+  }
+
+  function goAuthPage(target) {
+    pushHistory({ page, selectedVehicle, selectedThread, authPage });
+    setAuthPage(target);
   }
 
   if (loading) return (
@@ -99,12 +124,12 @@ export default function App() {
                 style={{ width: "20px", height: "20px", objectFit: "cover", border: "1px solid #808080" }} />
             )}
             <span style={{ fontSize: "11px", fontWeight: "bold", color: "#000080", cursor: "pointer" }}
-              onClick={() => setAuthPage("profile")}>
+              onClick={() => goAuthPage("profile")}>
               {user.username}
             </span>
             {user.is_admin && (
               <button className="win-btn" style={{ fontSize: "10px", padding: "1px 6px", background: "#800000", color: "#fff" }}
-                onClick={() => setAuthPage("admin")}>
+                onClick={() => goAuthPage("admin")}>
                 🛠️ Admin
               </button>
             )}
@@ -114,8 +139,8 @@ export default function App() {
           </div>
         ) : (
           <div style={{ display: "flex", gap: "2px" }}>
-            <button className="win-btn" style={{ fontSize: "11px" }} onClick={() => setAuthPage("login")}>Login</button>
-            <button className="win-btn" style={{ fontSize: "11px", background: "#000080", color: "#fff" }} onClick={() => setAuthPage("register")}>Register</button>
+            <button className="win-btn" style={{ fontSize: "11px" }} onClick={() => goAuthPage("login")}>Login</button>
+            <button className="win-btn" style={{ fontSize: "11px", background: "#000080", color: "#fff" }} onClick={() => goAuthPage("register")}>Register</button>
           </div>
         )}
 
@@ -168,10 +193,10 @@ export default function App() {
               {authPage === "login" ? (
                 <LoginPage
                   onSuccess={() => setAuthPage(null)}
-                  onGoRegister={() => setAuthPage("register")}
+                  onGoRegister={() => goAuthPage("register")}
                 />
               ) : authPage === "register" ? (
-                <RegisterPage onGoLogin={() => setAuthPage("login")} />
+                <RegisterPage onGoLogin={() => goAuthPage("login")} />
               ) : authPage === "profile" ? (
                 <ProfilePage onClose={() => setAuthPage(null)} />
               ) : authPage === "admin" ? (
