@@ -2,7 +2,7 @@
  * RevIndex — Forum Seed Script
  * Run: node server/seed.js
  * Creates 85 fake users, their vehicles, 45 threads, and reply chains.
- * All seed accounts get password: "Revindex1!"
+ * Seed accounts are not loginable — each gets a random unguessable password.
  */
 
 "use strict";
@@ -281,9 +281,7 @@ const COMMENTS_POOL = [
 async function seed() {
   console.log("🌱 Seeding RevIndex database...\n");
 
-  const password_hash = bcrypt.hashSync("Revindex1!", 10);
-
-  // ── 1. Create Users ────────────────────────────────────────────────────────
+  // Each seed account gets a unique random password — not stored anywhere, not loginable
   const insertUser = db.prepare(
     "INSERT OR IGNORE INTO users (username, email, password_hash, email_verified, created_at) VALUES (?, ?, ?, 1, ?)"
   );
@@ -292,6 +290,8 @@ async function seed() {
     const username = USERNAMES[i];
     const email    = `${username.toLowerCase().replace(/[^a-z0-9]/g, "")}@revindex.fake`;
     const date     = randDate(400);
+    // Random 32-byte hash — no known plaintext, account cannot be logged into
+    const password_hash = bcrypt.hashSync(require("crypto").randomBytes(32).toString("hex"), 10);
     try {
       const result = insertUser.run(username, email, password_hash, date);
       if (result.lastInsertRowid) {
@@ -406,8 +406,7 @@ async function seed() {
   }
 
   console.log(`✅ ${threads.length} threads created with ${totalComments} total comments`);
-  console.log("\n🎉 Seed complete!");
-  console.log("   Seed account password: Revindex1!");
+  console.log("\n🎉 Seed complete! (Seed accounts have random passwords — not loginable)");
 }
 
 seed().catch(err => {
