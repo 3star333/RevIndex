@@ -17,12 +17,19 @@ db.pragma("foreign_keys = ON");
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
+function randDate() {
+  const start = new Date("2026-03-03").getTime();
+  const end   = new Date("2026-05-06T23:59:59").getTime();
+  const d = new Date(start + Math.random() * (end - start));
   return d.toISOString().replace("T", " ").substring(0, 19);
 }
-function randDate(maxDaysAgo = 365) { return daysAgo(randInt(0, maxDaysAgo)); }
+function randDateAfter(isoStr) {
+  const start = new Date(isoStr.replace(" ", "T") + "Z").getTime();
+  const end   = new Date("2026-05-06T23:59:59").getTime();
+  if (start >= end) return isoStr;
+  const d = new Date(start + Math.random() * (end - start));
+  return d.toISOString().replace("T", " ").substring(0, 19);
+}
 
 // ─── Data Pools ───────────────────────────────────────────────────────────────
 const USERNAMES = [
@@ -289,7 +296,7 @@ async function seed() {
   for (let i = 0; i < USERNAMES.length; i++) {
     const username = USERNAMES[i];
     const email    = `${username.toLowerCase().replace(/[^a-z0-9]/g, "")}@revindex.fake`;
-    const date     = randDate(400);
+    const date     = randDate();
     // Random 32-byte hash — no known plaintext, account cannot be logged into
     const password_hash = bcrypt.hashSync(require("crypto").randomBytes(32).toString("hex"), 10);
     try {
@@ -314,7 +321,7 @@ async function seed() {
   const vehicleIds = [];
   for (const uid of userIds) {
     const { make, model, year } = randItem(MAKES_MODELS);
-    const date = randDate(380);
+    const date = randDate();
     const result = insertVehicle.run(uid, make, model, year);
     vehicleIds.push({ vehicleId: result.lastInsertRowid, userId: uid });
   }
@@ -338,7 +345,7 @@ async function seed() {
     const opIndex  = randInt(0, vehicleIds.length - 1);
     const op       = vehicleIds[opIndex];
     const opUser   = db.prepare("SELECT username FROM users WHERE id = ?").get(op.userId);
-    const threadDate = randDate(300);
+    const threadDate = randDate();
 
     const threadResult = insertThread.run(
       op.vehicleId, title, description, tag, op.userId, threadDate
@@ -357,7 +364,9 @@ async function seed() {
     for (let r = 0; r < numReplies; r++) {
       // Advance time by a few hours/days
       const minutesLater = randInt(30, 2880); // 30 min to 2 days
-      const replyDate = new Date(new Date(lastDate).getTime() + minutesLater * 60000)
+      const candidate = new Date(new Date(lastDate.replace(" ", "T") + "Z").getTime() + minutesLater * 60000);
+      const cap = new Date("2026-05-06T23:59:59Z");
+      const replyDate = (candidate > cap ? cap : candidate)
         .toISOString().replace("T", " ").substring(0, 19);
       lastDate = replyDate;
 

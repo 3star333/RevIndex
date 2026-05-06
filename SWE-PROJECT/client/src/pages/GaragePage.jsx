@@ -29,14 +29,15 @@ function markSeen(threadId) {
 
 export default function GaragePage({ onOpenThread }) {
   const { user, authHeader } = useAuth();
-  const [threads,   setThreads]   = useState([]);
-  const [vehicles,  setVehicles]  = useState([]);
-  const [stats,     setStats]     = useState({ thread_count: 0, post_count: 0 });
-  const [showForm,  setShowForm]  = useState(false);
-  const [error,     setError]     = useState("");
-  const [activeTag, setActiveTag] = useState("All");
-  const [sort,      setSort]      = useState("latest");
-  const [form,      setForm]      = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
+  const [threads,     setThreads]     = useState([]);
+  const [myVehicles,  setMyVehicles]  = useState([]);
+  const [allVehicles, setAllVehicles] = useState([]);
+  const [stats,       setStats]       = useState({ thread_count: 0, post_count: 0 });
+  const [showForm,    setShowForm]    = useState(false);
+  const [error,       setError]       = useState("");
+  const [activeTag,   setActiveTag]   = useState("All");
+  const [sort,        setSort]        = useState("latest");
+  const [form,        setForm]        = useState({ vehicle_id: "", title: "", description: "", tag: "General" });
 
   const fetchThreads = useCallback(async () => {
     try {
@@ -50,9 +51,18 @@ export default function GaragePage({ onOpenThread }) {
 
   useEffect(() => {
     fetchThreads();
-    fetch(`${API_URL}/vehicles`).then(r => r.json()).then(d => setVehicles(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch(`${API_URL}/vehicles`).then(r => r.json()).then(d => setAllVehicles(Array.isArray(d) ? d : [])).catch(() => {});
     fetch(`${API_URL}/threads/stats`).then(r => r.json()).then(setStats).catch(() => {});
   }, [fetchThreads]);
+
+  // Fetch the logged-in user's own vehicles separately
+  useEffect(() => {
+    if (!user) { setMyVehicles([]); return; }
+    fetch(`${API_URL}/vehicles/mine`, { headers: authHeader() })
+      .then(r => r.json())
+      .then(d => setMyVehicles(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [user]); // eslint-disable-line
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -93,33 +103,67 @@ export default function GaragePage({ onOpenThread }) {
         <span style={{ opacity: 0.5 }}>|</span>
         <span>💬 <strong>{stats.post_count}</strong> Posts</span>
         <span style={{ opacity: 0.5 }}>|</span>
-        <span>🚗 <strong>{vehicles.length}</strong> Vehicles Registered</span>
+        <span>🚗 <strong>{allVehicles.length}</strong> Vehicles Registered</span>
         <div style={{ flex: 1 }} />
         <span className="blink" style={{ color: "#FFFF00", fontWeight: "bold" }}>★ THE GARAGE ★</span>
       </div>
+
+      {/* ── My Garage section (logged-in users only) ── */}
+      {user && (
+        <div className="win-panel" style={{ padding: 0 }}>
+          <div className="win-title-bar">
+            <span>🚗 My Garage — {user.username}</span>
+            <button className="win-btn" style={{ fontSize: "11px", minWidth: "unset", padding: "1px 8px" }}
+              onClick={() => setShowForm(f => !f)}>
+              {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
+            </button>
+          </div>
+          {myVehicles.length === 0 ? (
+            <div style={{ padding: "12px 14px", fontSize: "12px", color: "#808080" }}>
+              No vehicles in your garage yet. Add one from your profile!
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", padding: "10px" }}>
+              {myVehicles.map(v => (
+                <div key={v.id} style={{
+                  background: "#fff", border: "2px inset #808080",
+                  padding: "6px 10px", minWidth: "140px", fontSize: "11px",
+                }}>
+                  {v.image ? (
+                    <img src={`${API_URL}${v.image}`} alt=""
+                      style={{ width: "100%", height: "60px", objectFit: "cover", border: "1px solid #808080", display: "block", marginBottom: "4px" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "60px", background: "#C0C0C0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", marginBottom: "4px" }}>🚗</div>
+                  )}
+                  <div style={{ fontWeight: "bold" }}>{v.year} {v.make}</div>
+                  <div>{v.model}</div>
+                  {v.nickname && <div style={{ fontStyle: "italic", color: "#808080" }}>&quot;{v.nickname}&quot;</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Board header + filter bar */}
       <div className="win-panel" style={{ padding: 0 }}>
         <div className="win-title-bar" style={{ justifyContent: "space-between" }}>
           <span>🔧 THE GARAGE — Build Threads &amp; Discussion</span>
-          {user ? (
-            <button className="win-btn" onClick={() => setShowForm(f => !f)}>
-              {showForm ? "[ Cancel ]" : "[ + New Thread ]"}
-            </button>
-          ) : (
+          {!user && (
             <span style={{ fontSize: "11px", color: "#FFFF00", padding: "0 8px" }}>Login to post</span>
           )}
         </div>
-        <div style={{ padding: "5px 8px", background: "#C0C0C0", borderBottom: "2px solid #808080", display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+        {/* Tag filter — scrollable row, won't overflow into sidebar */}
+        <div style={{ padding: "5px 8px", background: "#C0C0C0", borderBottom: "2px solid #808080", display: "flex", gap: "4px", alignItems: "center", overflowX: "auto", flexWrap: "nowrap" }}>
           {TAGS.map(tag => (
             <button key={tag} className="win-btn"
-              style={{ minWidth: "unset", padding: "2px 8px", fontSize: "11px", background: activeTag === tag ? "#000080" : "#C0C0C0", color: activeTag === tag ? "#fff" : "#000" }}
+              style={{ minWidth: "unset", padding: "2px 7px", fontSize: "11px", whiteSpace: "nowrap", flexShrink: 0, background: activeTag === tag ? "#000080" : "#C0C0C0", color: activeTag === tag ? "#fff" : "#000" }}
               onClick={() => setActiveTag(tag)}>
               {tag !== "All" && TAG_ICONS[tag]} {tag}
             </button>
           ))}
-          <div style={{ flex: 1 }} />
-          <select className="win-select" style={{ width: "auto", fontSize: "11px" }}
+          <div style={{ flex: 1, minWidth: "8px" }} />
+          <select className="win-select" style={{ width: "auto", fontSize: "11px", flexShrink: 0 }}
             value={sort} onChange={e => setSort(e.target.value)}>
             {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
@@ -130,8 +174,8 @@ export default function GaragePage({ onOpenThread }) {
         <div style={{ background: "#FF0000", color: "#fff", padding: "3px 8px", fontSize: "11px", fontWeight: "bold" }}>⚠ {error}</div>
       )}
 
-      {/* New thread form */}
-      {showForm && (
+      {/* New thread form — only shows user's own vehicles */}
+      {showForm && user && (
         <div className="win-panel" style={{ padding: 0 }}>
           <div className="win-title-bar"><span>📝 Start a New Thread</span></div>
           <div style={{ padding: "10px" }}>
@@ -141,13 +185,18 @@ export default function GaragePage({ onOpenThread }) {
                   <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Vehicle *</label>
                   <select className="win-select" value={form.vehicle_id}
                     onChange={e => setForm(f => ({ ...f, vehicle_id: e.target.value }))}>
-                    <option value="">-- Select Vehicle --</option>
-                    {vehicles.map(v => (
+                    <option value="">-- Select Your Vehicle --</option>
+                    {myVehicles.map(v => (
                       <option key={v.id} value={v.id}>
                         {v.year} {v.make} {v.model}{v.nickname ? ` "${v.nickname}"` : ""}
                       </option>
                     ))}
                   </select>
+                  {myVehicles.length === 0 && (
+                    <div style={{ fontSize: "10px", color: "#CC0000", marginTop: "2px" }}>
+                      Add a vehicle to your garage first.
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Tag</label>
@@ -188,14 +237,11 @@ export default function GaragePage({ onOpenThread }) {
         {threads.length === 0 ? (
           <div style={{ padding: "32px", textAlign: "center", color: "#808080", fontSize: "12px" }}>
             <div style={{ fontSize: "24px", marginBottom: "8px" }}>🔧</div>
-            No threads here yet. Be the first to post!<br />
-            <button className="win-btn" style={{ marginTop: "10px" }} onClick={() => setShowForm(true)}>
-              [ Start a Thread ]
-            </button>
+            No threads here yet. Be the first to post!
           </div>
         ) : (
           <div className="win-inset" style={{ overflow: "auto" }}>
-            <table className="win-table" style={{ width: "100%" }}>
+            <table className="win-table" style={{ width: "100%", minWidth: "420px" }}>
               <thead>
                 <tr>
                   <th style={{ width: "36px" }}></th>
@@ -226,12 +272,15 @@ export default function GaragePage({ onOpenThread }) {
                       <div style={{ fontSize: "11px", color: "#808080" }}>
                         {t.year} {t.make} {t.model}{t.nickname ? ` "${t.nickname}"` : ""}
                       </div>
+                      {/* Author — avatar + username */}
                       {t.author_username && (
-                        <div style={{ fontSize: "10px", color: "#4B0082", display: "flex", alignItems: "center", gap: "3px", marginTop: "1px" }}>
-                          {t.author_avatar
-                            ? <img src={t.author_avatar} alt="" style={{ width: "12px", height: "12px", objectFit: "cover", borderRadius: "1px" }} />
-                            : <span>👤</span>}
-                          {t.author_username}
+                        <div style={{ fontSize: "10px", color: "#4B0082", display: "flex", alignItems: "center", gap: "3px", marginTop: "2px" }}>
+                          <div style={{ width: "16px", height: "16px", border: "1px solid #808080", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#C0C0C0", flexShrink: 0 }}>
+                            {t.author_avatar
+                              ? <img src={`${API_URL}${t.author_avatar}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : <span style={{ fontSize: "10px" }}>👤</span>}
+                          </div>
+                          <span style={{ fontWeight: "bold" }}>{t.author_username}</span>
                         </div>
                       )}
                     </td>
@@ -243,7 +292,7 @@ export default function GaragePage({ onOpenThread }) {
                     <td style={{ textAlign: "center" }}>
                       <span className="win-counter" style={{ fontSize: "11px" }}>{t.reply_count || 0}</span>
                     </td>
-                    <td style={{ fontSize: "11px", color: "#808080" }}>
+                    <td style={{ fontSize: "11px", color: "#808080", whiteSpace: "nowrap" }}>
                       {t.last_reply
                         ? new Date(t.last_reply).toLocaleDateString()
                         : new Date(t.created_at).toLocaleDateString()}

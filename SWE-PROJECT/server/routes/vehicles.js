@@ -5,6 +5,7 @@ const path     = require("path");
 const fs       = require("fs");
 const multer   = require("multer");
 const { sanitizeString, isValidInt } = require("../models/validate");
+const { requireAuth } = require("../middleware/auth");
 
 // ── Multer config: store in /uploads with original extension ──────────────────
 const storage = multer.diskStorage({
@@ -33,6 +34,19 @@ const upload = multer({
 router.get("/", async (req, res) => {
   try {
     const rows = await dbAll("SELECT * FROM vehicles ORDER BY id DESC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /vehicles/mine — current user's vehicles only ─────────────────────────
+router.get("/mine", requireAuth, async (req, res) => {
+  try {
+    const rows = await dbAll(
+      "SELECT * FROM vehicles WHERE user_id = ? ORDER BY id DESC",
+      [req.user.id]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

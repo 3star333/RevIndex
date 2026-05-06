@@ -103,8 +103,8 @@ export default function ThreadPage({ thread, onBack }) {
 
   const t = threadData || thread;
   const allPosts = [
-    { id: "op", postNum: 1, author: "OP", date: t.created_at, content: t.description || "(No description provided.)", isOP: true },
-    ...comments.map((c, i) => ({ ...c, postNum: i + 2, isOP: false })),
+    { id: "op", postNum: 1, author: t.author_username || "OP", author_username: t.author_username, author_avatar: t.author_avatar, date: t.created_at, content: t.description || "(No description provided.)", isOP: true },
+    ...comments.map((c, i) => ({ ...c, postNum: i + 2, date: c.created_at, isOP: false })),
   ];
   const totalPages = Math.max(1, Math.ceil(allPosts.length / PAGE_SIZE));
   const pagePosts  = allPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
