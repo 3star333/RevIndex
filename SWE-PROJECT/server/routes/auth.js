@@ -37,8 +37,9 @@ function getMailer() {
   return nodemailer.createTransport({
     host:   process.env.SMTP_HOST,
     port:   Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    secure: Number(process.env.SMTP_PORT) === 465,
     auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    tls:    { rejectUnauthorized: false },
   });
 }
 
@@ -75,9 +76,21 @@ router.post("/register", async (req, res) => {
   const existing = db.prepare("SELECT id FROM users WHERE username = ? OR email = ?").get(username, email);
   if (existing) return res.status(409).json({ error: "Username or email already taken" });
 
-  const password_hash      = await bcrypt.hash(password, 12);
-  const verification_token = crypto.randomBytes(32).toString("hex");
+  const password_hash = await bcrypt.hash(password, 12);
+  const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 
+  // If SMTP isn't configured, auto-verify immediately
+  if (!smtpConfigured) {
+    db.prepare(
+      "INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, 1)"
+    ).run(username, email.toLowerCase(), password_hash);
+    return res.status(201).json({
+      message: "Account created! You can log in now.",
+      verified: true,
+    });
+  }
+
+  const verification_token = crypto.randomBytes(32).toString("hex");
   const { lastInsertRowid } = db.prepare(
     "INSERT INTO users (username, email, password_hash, verification_token) VALUES (?, ?, ?, ?)"
   ).run(username, email.toLowerCase(), password_hash, verification_token);
@@ -86,13 +99,40 @@ router.post("/register", async (req, res) => {
     await sendVerificationEmail(email, verification_token);
   } catch (err) {
     console.error("Email send failed:", err.message);
-    // Don't block registration if email fails — just log it
+    // Auto-verify as fallback if email fails
+    db.prepare("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?").run(lastInsertRowid);
+    return res.status(201).json({
+      message: "Account created! (Email delivery failed — you can log in now.)",
+      verified: true,
+    });
   }
 
   res.status(201).json({
     message: "Account created! Check your email to verify your account.",
     userId: lastInsertRowid,
+    verified: false,
   });
+});
+
+// ── POST /auth/resend-verification ───────────────────────────────────────────
+router.post("/resend-verification", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  const user = db.prepare("SELECT id, email_verified, verification_token FROM users WHERE email = ?").get(email.toLowerCase());
+  if (!user) return res.status(200).json({ message: "If that email exists, a link was sent." }); // don't leak existence
+  if (user.email_verified) return res.status(400).json({ error: "This account is already verified." });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  db.prepare("UPDATE users SET verification_token = ? WHERE id = ?").run(token, user.id);
+
+  try {
+    await sendVerificationEmail(email, token);
+    res.json({ message: "Verification email resent!" });
+  } catch (err) {
+    console.error("Resend failed:", err.message);
+    res.status(500).json({ error: "Failed to send email. Please try again later." });
+  }
 });
 
 // ── GET /auth/verify-email?token=xxx ────────────────────────────────────────
