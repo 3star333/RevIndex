@@ -37,10 +37,6 @@ const PORT = process.env.PORT || 5000;
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-// ── One-time data fix ─────────────────────────────────────────────────────────
-{ const db = require("./db/database");
-  db.prepare("UPDATE vehicles SET nickname = ? WHERE id = 86 AND nickname = ?")
-    .run("The Daily Driver", "Super-Semite Slayer"); }
 // ── Security headers (helmet) ─────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
