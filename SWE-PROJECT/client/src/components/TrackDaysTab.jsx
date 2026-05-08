@@ -8,7 +8,7 @@ export default function TrackDaysTab({ vehicleId, isOwner }) {
   const [days,     setDays]     = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [error,    setError]    = useState("");
-  const [form,     setForm]     = useState({ event_type: "Track Day", track_name: "", date: today(), best_lap: "", conditions: "Dry", notes: "" });
+  const [form,     setForm]     = useState({ event_type: "Track Day", track: "", date: today(), best_lap: "", conditions: "Dry", notes: "" });
 
   useEffect(() => {
     fetch(`${API_URL}/trackdays?vehicle_id=${vehicleId}`)
@@ -25,7 +25,7 @@ export default function TrackDaysTab({ vehicleId, isOwner }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setDays(prev => [data, ...prev]);
-      setForm({ event_type: "Track Day", track_name: "", date: today(), best_lap: "", conditions: "Dry", notes: "" });
+      setForm({ event_type: "Track Day", track: "", date: today(), best_lap: "", conditions: "Dry", notes: "" });
       setShowForm(false);
     } catch (err) { setError(err.message); }
   }
@@ -50,9 +50,9 @@ export default function TrackDaysTab({ vehicleId, isOwner }) {
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <StatBadge label="SESSIONS" value={days.length} color="#000080" />
           {bestLap && (
-            <StatBadge label="BEST LAP" value={bestLap.best_lap} color="#006400" sub={bestLap.track_name || ""} />
+            <StatBadge label="BEST LAP" value={bestLap.best_lap} color="#006400" sub={bestLap.track || ""} />
           )}
-          <StatBadge label="TRACKS" value={new Set(days.map(d => d.track_name).filter(Boolean)).size} color="#4B0082" />
+          <StatBadge label="TRACKS" value={new Set(days.map(d => d.track).filter(Boolean)).size} color="#4B0082" />
         </div>
       )}
 
@@ -81,7 +81,7 @@ export default function TrackDaysTab({ vehicleId, isOwner }) {
             </div>
             <div>
               <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Track / Venue Name</label>
-              <input className="win-input" placeholder="e.g. Watkins Glen" value={form.track_name} onChange={e => setForm(f => ({ ...f, track_name: e.target.value }))} />
+              <input className="win-input" placeholder="e.g. Watkins Glen" value={form.track} onChange={e => setForm(f => ({ ...f, track: e.target.value }))} />
             </div>
             <div>
               <label style={{ display: "block", fontSize: "12px", marginBottom: "2px" }}>Best Lap / Time</label>
@@ -124,7 +124,7 @@ export default function TrackDaysTab({ vehicleId, isOwner }) {
                       <td>
                         <span>{EVENT_ICONS[day.event_type] || "🔵"} {day.event_type}</span>
                       </td>
-                      <td style={{ fontWeight: "bold" }}>{day.track_name || "—"}</td>
+                      <td style={{ fontWeight: "bold" }}>{day.track || "—"}</td>
                       <td style={{ fontFamily: "Courier New", fontWeight: "bold", color: isBest ? "#006400" : "#000080" }}>
                         {day.best_lap || "—"} {isBest && <span title="Best lap!" style={{ color: "#006400" }}>★</span>}
                       </td>
